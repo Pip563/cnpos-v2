@@ -1,0 +1,178 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cnpos.core.contracts.episode_contract_v1_2",
+  "title": "CNPOS Episode Contract v1_2",
+  "description": "Deterministic episode-level contract for CNPOS v1_2 cinematic pipelines.",
+  "type": "object",
+  "additionalProperties": false,
+
+  "properties": {
+    "domain": {
+      "type": "string",
+      "const": "EPISODE",
+      "description": "Fixed domain identifier for episode-level payloads."
+    },
+    "version": {
+      "type": "string",
+      "const": "v1_2",
+      "description": "Contract version; must match CNPOS v1_2."
+    },
+
+    "episode_id": {
+      "type": "string",
+      "description": "Deterministic episode identifier (UUID or canonical string)."
+    },
+    "series_id": {
+      "type": "string",
+      "description": "Identifier of the series or project this episode belongs to."
+    },
+    "season_number": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Season index for the episode."
+    },
+    "episode_number": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Episode index within the season."
+    },
+
+    "title": {
+      "type": "string",
+      "description": "Human-readable episode title."
+    },
+    "logline": {
+      "type": "string",
+      "description": "Short logline summarizing the episode."
+    },
+    "synopsis": {
+      "type": "string",
+      "description": "Extended synopsis of the episode narrative."
+    },
+
+    "runtime_minutes": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Target runtime of the episode in minutes."
+    },
+
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "planned",
+        "generated",
+        "validated",
+        "locked"
+      ],
+      "description": "Lifecycle status of the episode payload in the pipeline."
+    },
+
+    "scenes": {
+      "type": "array",
+      "description": "Ordered list of scene descriptors for the episode.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "scene_id": {
+            "type": "string",
+            "description": "Deterministic scene identifier."
+          },
+          "index": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Zero-based index of the scene within the episode."
+          },
+          "slugline": {
+            "type": "string",
+            "description": "Scene slugline (INT/EXT, location, time)."
+          },
+          "summary": {
+            "type": "string",
+            "description": "Short description of the scene content."
+          },
+          "characters": {
+            "type": "array",
+            "description": "Characters present in the scene.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "character_id": {
+                  "type": "string",
+                  "description": "Canonical character identifier."
+                },
+                "role": {
+                  "type": "string",
+                  "description": "Role in the scene (protagonist, antagonist, supporting, etc.)."
+                }
+              },
+              "required": ["character_id"]
+            }
+          }
+        },
+        "required": ["scene_id", "index", "slugline"]
+      }
+    },
+
+    "metadata": {
+      "type": "object",
+      "description": "Auxiliary metadata for orchestration and telemetry.",
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp of the episode payload."
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update timestamp of the episode payload."
+        },
+        "pipeline_id": {
+          "type": "string",
+          "description": "Identifier of the pipeline instance that produced/modified this payload."
+        },
+        "orchestrator_id": {
+          "type": "string",
+          "description": "Identifier of the orchestrator managing this episode."
+        }
+      }
+    },
+
+    "governance": {
+      "type": "object",
+      "description": "Episode-level governance annotations and flags.",
+      "additionalProperties": false,
+      "properties": {
+        "policy_id": {
+          "type": "string",
+          "description": "Identifier of the governance policy applied to this episode."
+        },
+        "flags": {
+          "type": "array",
+          "description": "List of governance flags (e.g., content warnings, constraints).",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+
+  "required": [
+    "domain",
+    "version",
+    "episode_id",
+    "series_id",
+    "season_number",
+    "episode_number",
+    "title",
+    "logline",
+    "runtime_minutes",
+    "status",
+    "scenes"
+  ]
+}

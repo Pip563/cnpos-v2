@@ -1,0 +1,199 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cnpos.core.contracts.shot_contract_v1_2",
+  "title": "CNPOS Shot Contract v1_2",
+  "description": "Deterministic shot-level contract for CNPOS v1_2 cinematic pipelines.",
+  "type": "object",
+  "additionalProperties": false,
+
+  "properties": {
+    "domain": {
+      "type": "string",
+      "const": "SHOT",
+      "description": "Fixed domain identifier for shot-level payloads."
+    },
+    "version": {
+      "type": "string",
+      "const": "v1_2",
+      "description": "Contract version; must match CNPOS v1_2."
+    },
+
+    "shot_id": {
+      "type": "string",
+      "description": "Deterministic shot identifier (UUID or canonical string)."
+    },
+    "scene_id": {
+      "type": "string",
+      "description": "Identifier of the scene this shot belongs to."
+    },
+    "episode_id": {
+      "type": "string",
+      "description": "Identifier of the episode this shot belongs to."
+    },
+    "index": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Zero-based index of the shot within the scene."
+    },
+
+    "type": {
+      "type": "string",
+      "description": "Shot type (CU, MS, LS, OTS, etc.)."
+    },
+    "camera": {
+      "type": "object",
+      "description": "Camera configuration for the shot.",
+      "additionalProperties": false,
+      "properties": {
+        "movement": {
+          "type": "string",
+          "description": "Camera movement (static, pan, tilt, dolly, crane, etc.)."
+        },
+        "angle": {
+          "type": "string",
+          "description": "Camera angle (high, low, eye-level, Dutch, etc.)."
+        },
+        "lens_mm": {
+          "type": "number",
+          "minimum": 1,
+          "description": "Lens focal length in millimeters."
+        },
+        "aperture_f": {
+          "type": "number",
+          "minimum": 0.7,
+          "description": "Aperture (f-stop)."
+        }
+      }
+    },
+
+    "composition": {
+      "type": "object",
+      "description": "Visual composition details for the shot.",
+      "additionalProperties": false,
+      "properties": {
+        "framing": {
+          "type": "string",
+          "description": "Framing description (e.g., two-shot, close-up on protagonist)."
+        },
+        "focus_subject": {
+          "type": "string",
+          "description": "Primary subject in focus."
+        },
+        "depth_of_field": {
+          "type": "string",
+          "description": "Qualitative description of depth of field (shallow, deep, etc.)."
+        },
+        "lighting_style": {
+          "type": "string",
+          "description": "Lighting style (high-key, low-key, natural, etc.)."
+        }
+      }
+    },
+
+    "dialogue": {
+      "type": "array",
+      "description": "Dialogue lines associated with this shot.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "line_id": {
+            "type": "string",
+            "description": "Identifier of the dialogue line."
+          },
+          "character_id": {
+            "type": "string",
+            "description": "Character delivering the line."
+          },
+          "text": {
+            "type": "string",
+            "description": "Dialogue text."
+          }
+        },
+        "required": ["line_id", "character_id", "text"]
+      }
+    },
+
+    "actions": {
+      "type": "array",
+      "description": "Physical or narrative actions occurring in the shot.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "action_id": {
+            "type": "string",
+            "description": "Identifier of the action."
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the action."
+          }
+        },
+        "required": ["action_id", "description"]
+      }
+    },
+
+    "duration_seconds": {
+      "type": "number",
+      "minimum": 0.1,
+      "description": "Duration of the shot in seconds."
+    },
+
+    "metadata": {
+      "type": "object",
+      "description": "Auxiliary metadata for orchestration and telemetry.",
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp of the shot payload."
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update timestamp of the shot payload."
+        },
+        "pipeline_id": {
+          "type": "string",
+          "description": "Identifier of the pipeline instance that produced/modified this payload."
+        },
+        "orchestrator_id": {
+          "type": "string",
+          "description": "Identifier of the orchestrator managing this shot."
+        }
+      }
+    },
+
+    "governance": {
+      "type": "object",
+      "description": "Shot-level governance annotations and flags.",
+      "additionalProperties": false,
+      "properties": {
+        "policy_id": {
+          "type": "string",
+          "description": "Identifier of the governance policy applied to this shot."
+        },
+        "flags": {
+          "type": "array",
+          "description": "List of governance flags (e.g., content warnings, constraints).",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+
+  "required": [
+    "domain",
+    "version",
+    "shot_id",
+    "scene_id",
+    "episode_id",
+    "index",
+    "type",
+    "duration_seconds"
+  ]
+}

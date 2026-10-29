@@ -1,0 +1,180 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cnpos.core.contracts.scene_contract_v1_2",
+  "title": "CNPOS Scene Contract v1_2",
+  "description": "Deterministic scene-level contract for CNPOS v1_2 cinematic pipelines.",
+  "type": "object",
+  "additionalProperties": false,
+
+  "properties": {
+    "domain": {
+      "type": "string",
+      "const": "SCENE",
+      "description": "Fixed domain identifier for scene-level payloads."
+    },
+    "version": {
+      "type": "string",
+      "const": "v1_2",
+      "description": "Contract version; must match CNPOS v1_2."
+    },
+
+    "scene_id": {
+      "type": "string",
+      "description": "Deterministic scene identifier (UUID or canonical string)."
+    },
+    "episode_id": {
+      "type": "string",
+      "description": "Identifier of the episode this scene belongs to."
+    },
+    "index": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Zero-based index of the scene within the episode."
+    },
+
+    "slugline": {
+      "type": "string",
+      "description": "Scene slugline (INT/EXT, location, time)."
+    },
+    "summary": {
+      "type": "string",
+      "description": "Short description of the scene content."
+    },
+    "beats": {
+      "type": "array",
+      "description": "Ordered list of narrative beats within the scene.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "beat_id": {
+            "type": "string",
+            "description": "Identifier of the beat."
+          },
+          "index": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Zero-based index of the beat within the scene."
+          },
+          "description": {
+            "type": "string",
+            "description": "Narrative description of the beat."
+          },
+          "emotional_tone": {
+            "type": "string",
+            "description": "Optional emotional tone annotation for the beat."
+          }
+        },
+        "required": ["beat_id", "index", "description"]
+      }
+    },
+
+    "characters": {
+      "type": "array",
+      "description": "Characters present in the scene.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "character_id": {
+            "type": "string",
+            "description": "Canonical character identifier."
+          },
+          "role": {
+            "type": "string",
+            "description": "Role in the scene (protagonist, antagonist, supporting, etc.)."
+          },
+          "arc_state": {
+            "type": "string",
+            "description": "Optional arc state label for continuity tracking."
+          }
+        },
+        "required": ["character_id"]
+      }
+    },
+
+    "shots": {
+      "type": "array",
+      "description": "Ordered list of shot descriptors associated with this scene.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "shot_id": {
+            "type": "string",
+            "description": "Deterministic shot identifier."
+          },
+          "index": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Zero-based index of the shot within the scene."
+          },
+          "type": {
+            "type": "string",
+            "description": "Shot type (CU, MS, LS, etc.)."
+          },
+          "description": {
+            "type": "string",
+            "description": "Short description of the shot content."
+          }
+        },
+        "required": ["shot_id", "index"]
+      }
+    },
+
+    "metadata": {
+      "type": "object",
+      "description": "Auxiliary metadata for orchestration and telemetry.",
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp of the scene payload."
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update timestamp of the scene payload."
+        },
+        "pipeline_id": {
+          "type": "string",
+          "description": "Identifier of the pipeline instance that produced/modified this payload."
+        },
+        "orchestrator_id": {
+          "type": "string",
+          "description": "Identifier of the orchestrator managing this scene."
+        }
+      }
+    },
+
+    "governance": {
+      "type": "object",
+      "description": "Scene-level governance annotations and flags.",
+      "additionalProperties": false,
+      "properties": {
+        "policy_id": {
+          "type": "string",
+          "description": "Identifier of the governance policy applied to this scene."
+        },
+        "flags": {
+          "type": "array",
+          "description": "List of governance flags (e.g., content warnings, constraints).",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+
+  "required": [
+    "domain",
+    "version",
+    "scene_id",
+    "episode_id",
+    "index",
+    "slugline",
+    "characters"
+  ]
+}

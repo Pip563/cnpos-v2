@@ -1,0 +1,204 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "agent-loop-orchestrator-v1_2",
+    "title": "Agent Loop & Orchestrator Telemetry v1_2",
+    "tags": [
+      "orchestrator",
+      "agent-loop",
+      "v1_2"
+    ],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "10s",
+    "panels": [
+      {
+        "id": 1,
+        "type": "graph",
+        "title": "Episode Runs v1_2",
+        "datasource": "${DS_PROMETHEUS}",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        },
+        "targets": [
+          {
+            "refId": "A",
+            "expr": "cnpos_orchestrator_v1_2_episode_runs_total",
+            "legendFormat": "episode_runs_v1_2"
+          }
+        ],
+        "lines": true,
+        "linewidth": 2,
+        "nullPointMode": "null",
+        "yaxes": [
+          {
+            "format": "short",
+            "logBase": 1
+          },
+          {
+            "format": "short",
+            "logBase": 1
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "type": "graph",
+        "title": "Code Runs v1_2",
+        "datasource": "${DS_PROMETHEUS}",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 0
+        },
+        "targets": [
+          {
+            "refId": "A",
+            "expr": "cnpos_orchestrator_v1_2_code_runs_total",
+            "legendFormat": "code_runs_v1_2"
+          }
+        ],
+        "lines": true,
+        "linewidth": 2,
+        "nullPointMode": "null",
+        "yaxes": [
+          {
+            "format": "short",
+            "logBase": 1
+          },
+          {
+            "format": "short",
+            "logBase": 1
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "type": "stat",
+        "title": "Orchestrator Errors v1_2",
+        "datasource": "${DS_PROMETHEUS}",
+        "gridPos": {
+          "h": 6,
+          "w": 6,
+          "x": 0,
+          "y": 8
+        },
+        "targets": [
+          {
+            "refId": "A",
+            "expr": "sum(cnpos_orchestrator_v1_2_errors_total)",
+            "legendFormat": "errors_v1_2"
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "calcs": [
+              "last"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "orientation": "horizontal"
+        }
+      },
+      {
+        "id": 4,
+        "type": "stat",
+        "title": "Validator Failures v1_2",
+        "datasource": "${DS_PROMETHEUS}",
+        "gridPos": {
+          "h": 6,
+          "w": 6,
+          "x": 6,
+          "y": 8
+        },
+        "targets": [
+          {
+            "refId": "A",
+            "expr": "sum(cnpos_validator_pipeline_v1_2_failures_total)",
+            "legendFormat": "validator_failures_v1_2"
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "calcs": [
+              "last"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "orientation": "horizontal"
+        }
+      },
+      {
+        "id": 5,
+        "type": "stat",
+        "title": "Backend Errors v1_2",
+        "datasource": "${DS_PROMETHEUS}",
+        "gridPos": {
+          "h": 6,
+          "w": 6,
+          "x": 12,
+          "y": 8
+        },
+        "targets": [
+          {
+            "refId": "A",
+            "expr": "sum(cnpos_backend_manager_v1_2_errors_total)",
+            "legendFormat": "backend_errors_v1_2"
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "calcs": [
+              "last"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "orientation": "horizontal"
+        }
+      },
+      {
+        "id": 6,
+        "type": "table",
+        "title": "Recent Orchestrator Events v1_2",
+        "datasource": "${DS_LOKI}",
+        "gridPos": {
+          "h": 10,
+          "w": 24,
+          "x": 0,
+          "y": 14
+        },
+        "targets": [
+          {
+            "refId": "A",
+            "expr": "{app=\"cnpos_orchestrator_v1_2\"} |= \"cnpos_orchestrator_v1_2\"",
+            "legendFormat": "events_v1_2"
+          }
+        ],
+        "options": {
+          "showHeader": true
+        }
+      }
+    ],
+    "time": {
+      "from": "now-6h",
+      "to": "now"
+    },
+    "timepicker": {
+      "refresh_intervals": [
+        "5s",
+        "10s",
+        "30s",
+        "1m",
+        "5m"
+      ]
+    }
+  }
+}

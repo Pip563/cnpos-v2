@@ -1,0 +1,134 @@
+{
+    "version": "v1_2",
+
+    "naming": {
+        "module_suffix": "_v1_2.py",
+        "class_suffix": "V1_2",
+        "forbidden_suffixes": [
+            "v1.2",
+            "v11",
+            "v1_1",
+            "v12",
+            "v2"
+        ],
+        "require_exact_suffix": true,
+        "require_domain_prefix": true
+    },
+
+    "imports": {
+        "allowed_prefix": "cnpos.core.",
+        "required_suffix": "_v1_2",
+        "forbid_legacy_prefixes": [
+            "core.",
+            "cnpos.core.runtime.workers.base_worker"
+        ],
+        "forbid_wildcards": true,
+        "forbid_relative_imports": true,
+
+        "canonical_modules": [
+            "cnpos.core.automation.governance_loader_v1_2",
+            "cnpos.core.automation.state_manager_v1_2",
+            "cnpos.core.automation.planner_agent_v1_2",
+            "cnpos.core.automation.writer_agent_v1_2",
+            "cnpos.core.automation.reviewer_agent_v1_2",
+            "cnpos.core.automation.test_agent_v1_2",
+            "cnpos.core.automation.rewriter_agent_v1_2",
+            "cnpos.core.validators.validator_pipeline_v1_2",
+            "cnpos.core.runtime.backend_manager_v1_2"
+        ],
+
+        "forbidden_modules": [
+            "cnpos.core.automation.automation_loader_v1_2",
+            "cnpos.core.automation.governance_automation_loader_v1_2",
+            "cnpos.core.governance.automation_loader_v1_2",
+            "core.automation.automation_loader_v1_2",
+            "core.governance.automation_loader_v1_2",
+            "automation_loader_v1_2",
+            "governance_automation_loader_v1_2"
+        ]
+    },
+
+    "structure": {
+        "requires_future_annotations": true,
+        "requires_logger": true,
+        "requires_error_class": true,
+        "requires_docstring": true,
+        "requires_domain_constant": true,
+        "requires_version_constant": true,
+        "requires_all_export": true,
+        "indentation": 4,
+        "max_line_length": 120
+    },
+
+    "validators": {
+        "governance": true,
+        "continuity": true,
+        "mutation": true,
+        "contract_schema": true,
+        "enforce_order": [
+            "contract",
+            "governance",
+            "continuity",
+            "mutation"
+        ]
+    },
+
+    "contracts": {
+        "require_contract_for": [
+            "episode",
+            "scene",
+            "shot",
+            "render"
+        ],
+
+        "contract_fields": {
+            "required": [
+                "id",
+                "prompt"
+            ],
+
+            "optional": [
+                "parameters",
+                "metadata"
+            ]
+        }
+    },
+
+    "governance_rules": {
+        "forbid_empty_prompt": true,
+        "forbid_missing_parameters": false,
+        "require_metadata_block": false,
+        "strict_mode": true
+    },
+
+    "continuity": {
+        "forbid_drift": true,
+        "require_previous_state": true,
+        "semantic_check": true,
+        "structural_check": true
+    },
+
+    "mutation": {
+        "track_all_mutations": true,
+        "require_mutation_id": true,
+        "require_mutation_type": true,
+        "require_risk_level": true,
+        "forbid_unclassified_mutations": true
+    },
+
+    "drift": {
+        "forbid_missing_suffix": true,
+        "forbid_legacy_paths": true,
+        "forbid_unregistered_modules": true,
+        "require_deterministic_output": true,
+
+        "module_alignment": {
+            "enforce_architecture_tree": true,
+            "enforce_v1_2_only": true,
+            "forbid_loader_aliases": true,
+            "forbid_import_drift": true
+        }
+    },
+
+    "automation": {
+       

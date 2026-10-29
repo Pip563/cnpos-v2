@@ -1,0 +1,248 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cnpos.core.contracts.render_contract_v1_2",
+  "title": "CNPOS Render Contract v1_2",
+  "description": "Deterministic render-level contract for CNPOS v1_2 cinematic pipelines.",
+  "type": "object",
+  "additionalProperties": false,
+
+  "properties": {
+    "domain": {
+      "type": "string",
+      "const": "RENDER",
+      "description": "Fixed domain identifier for render-level payloads."
+    },
+    "version": {
+      "type": "string",
+      "const": "v1_2",
+      "description": "Contract version; must match CNPOS v1_2."
+    },
+
+    "render_id": {
+      "type": "string",
+      "description": "Deterministic render job identifier (UUID or canonical string)."
+    },
+    "episode_id": {
+      "type": "string",
+      "description": "Identifier of the episode this render belongs to."
+    },
+    "scene_id": {
+      "type": "string",
+      "description": "Optional scene identifier when rendering at scene granularity."
+    },
+    "shot_id": {
+      "type": "string",
+      "description": "Optional shot identifier when rendering at shot granularity."
+    },
+
+    "status": {
+      "type": "string",
+      "enum": [
+        "queued",
+        "running",
+        "completed",
+        "failed",
+        "cancelled"
+      ],
+      "description": "Lifecycle status of the render job."
+    },
+
+    "output": {
+      "type": "object",
+      "description": "Output configuration for the render job.",
+      "additionalProperties": false,
+      "properties": {
+        "container": {
+          "type": "string",
+          "enum": ["mp4", "mov", "mkv", "webm"],
+          "description": "Output container format."
+        },
+        "codec": {
+          "type": "string",
+          "enum": ["h264", "h265", "prores", "vp9"],
+          "description": "Video codec to use for rendering."
+        },
+        "resolution": {
+          "type": "string",
+          "enum": ["1920x1080", "3840x2160", "1280x720"],
+          "description": "Target resolution for the render."
+        },
+        "frame_rate": {
+          "type": "number",
+          "minimum": 1,
+          "description": "Frames per second for the render."
+        },
+        "bitrate_kbps": {
+          "type": "integer",
+          "minimum": 1000,
+          "description": "Target video bitrate in kilobits per second."
+        },
+        "audio_channels": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of audio channels (e.g., 2 for stereo, 6 for 5.1)."
+        },
+        "audio_sample_rate_hz": {
+          "type": "integer",
+          "minimum": 8000,
+          "description": "Audio sample rate in Hz."
+        }
+      },
+      "required": [
+        "container",
+        "codec",
+        "resolution",
+        "frame_rate"
+      ]
+    },
+
+    "assets": {
+      "type": "object",
+      "description": "References to visual and audio assets used in the render.",
+      "additionalProperties": false,
+      "properties": {
+        "video_tracks": {
+          "type": "array",
+          "description": "Ordered list of video track descriptors.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "track_id": {
+                "type": "string",
+                "description": "Identifier of the video track."
+              },
+              "source_path": {
+                "type": "string",
+                "description": "Filesystem or storage path to the source video asset."
+              },
+              "start_timecode": {
+                "type": "string",
+                "description": "Start timecode within the source asset (e.g., 00:00:00:00)."
+              },
+              "end_timecode": {
+                "type": "string",
+                "description": "End timecode within the source asset."
+              }
+            },
+            "required": ["track_id", "source_path"]
+          }
+        },
+        "audio_tracks": {
+          "type": "array",
+          "description": "Ordered list of audio track descriptors.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "track_id": {
+                "type": "string",
+                "description": "Identifier of the audio track."
+              },
+              "source_path": {
+                "type": "string",
+                "description": "Filesystem or storage path to the source audio asset."
+              },
+              "role": {
+                "type": "string",
+                "description": "Role of the track (dialogue, music, effects, etc.)."
+              }
+            },
+            "required": ["track_id", "source_path"]
+          }
+        }
+      }
+    },
+
+    "timeline": {
+      "type": "array",
+      "description": "Timeline events describing how assets are composed over time.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "description": "Identifier of the timeline event."
+          },
+          "type": {
+            "type": "string",
+            "enum": ["cut", "transition", "effect", "overlay"],
+            "description": "Type of timeline event."
+          },
+          "start_timecode": {
+            "type": "string",
+            "description": "Start timecode of the event in the final render."
+          },
+          "end_timecode": {
+            "type": "string",
+            "description": "End timecode of the event in the final render."
+          },
+          "params": {
+            "type": "object",
+            "description": "Event-specific parameters (e.g., transition type, effect settings)."
+          }
+        },
+        "required": ["event_id", "type", "start_timecode"]
+      }
+    },
+
+    "metadata": {
+      "type": "object",
+      "description": "Auxiliary metadata for orchestration and telemetry.",
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp of the render payload."
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update timestamp of the render payload."
+        },
+        "pipeline_id": {
+          "type": "string",
+          "description": "Identifier of the pipeline instance that produced/modified this payload."
+        },
+        "orchestrator_id": {
+          "type": "string",
+          "description": "Identifier of the orchestrator managing this render."
+        },
+        "node_id": {
+          "type": "string",
+          "description": "Identifier of the render node or worker executing the job."
+        }
+      }
+    },
+
+    "governance": {
+      "type": "object",
+      "description": "Render-level governance annotations and flags.",
+      "additionalProperties": false,
+      "properties": {
+        "policy_id": {
+          "type": "string",
+          "description": "Identifier of the governance policy applied to this render."
+        },
+        "flags": {
+          "type": "array",
+          "description": "List of governance flags (e.g., content warnings, export constraints).",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+
+  "required": [
+    "domain",
+    "version",
+    "render_id",
+    "episode_id",
+    "status",
+    "output"
+  ]
+}
