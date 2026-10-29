@@ -1,3 +1,7 @@
+<<<<<<< HEAD
+=======
+
+>>>>>>> a90e32b (Add authoritative architecture README)
 Architecture is the authority, not tests, aliases, historical modules, backups, or migrations. Architecture_Authority_V1_2..docx
 The approved production structure is exactly the canonical tree defined in canonical_tree_v1_2.md.
 Tests are a separate ownership domain from production architecture. architectural_decision.document.docx
