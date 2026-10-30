@@ -1,3 +1,4 @@
+# cnpos/core/orchestrators/cnpos_orchestrator_v1_2.py
 from __future__ import annotations
 
 import json
@@ -5,46 +6,35 @@ import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
-from core.orchestrators.pipeline_v1_2 import PipelineMapV12
-
+from cnpos.core.orchestrators.pipeline_map_v1_2 import PipelineMapV1_2
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
 class Objective:
-    """Internal objective contract used by the orchestrator."""
-
     objective_id: str
     objective_type: str = "module_generation"
     target_phase: str = "code_pipeline_v1_2"
     modules: List[str] = field(default_factory=list)
     status: str = "pending"
-    created_at: str = field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
+    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 
 class PipelineResolutionError(RuntimeError):
-    """Raised when the orchestrator cannot resolve a pipeline."""
+    pass
 
 
 class ObjectiveExecutionError(RuntimeError):
-    """Raised when the orchestrator cannot execute an objective."""
+    pass
 
 
 class CodePipelineAdapterV12:
-    """Compatibility adapter that exposes a unified .run(task) API.
+    """Compatibility adapter that exposes a unified .run(task) API."""
 
-    The repository already contains the actual planner/writer/reviewer/tester agents
-    and pipeline assemblies. This adapter keeps the orchestrator at the objective/
-    queue level and invokes the underlying engineering pipeline instead of calling
-    individual agents directly from the orchestrator.
-    """
-
-    def __init__(self, repo_root: Path, pipeline_map: PipelineMapV12):
+    def __init__(self, repo_root: Path, pipeline_map: PipelineMapV1_2):
         self.repo_root = repo_root
         self.pipeline_map = pipeline_map
         self._pipeline = self._build_pipeline()
@@ -59,12 +49,11 @@ class CodePipelineAdapterV12:
             return self.pipeline_map.build_code_pipeline(str(self.repo_root))
 
         raise PipelineResolutionError(
-            "Unable to resolve code pipeline via PipelineMapV12.get_pipeline_class() "
+            "Unable to resolve code pipeline via PipelineMapV1_2.get_pipeline_class() "
             "or build_code_pipeline()."
         )
 
     def run(self, task: Dict[str, Any]) -> Dict[str, Any]:
-        """Run a single queue item through the code pipeline."""
         task = dict(task)
         module_rel = task.get("module_path") or task.get("target_path")
         if not module_rel:
@@ -79,15 +68,19 @@ class CodePipelineAdapterV12:
         target_path = (self.repo_root / rel_path).resolve()
         target_path.parent.mkdir(parents=True, exist_ok=True)
 
-        planner = self._pipeline.get("code_planner")
-        writer = self._pipeline.get("code_writer")
-        reviewer = self._pipeline.get("code_reviewer")
-        tester = self._pipeline.get("code_tester")
+        planner = self._pipeline.get("code_planner") if isinstance(self._pipeline, dict) else None
+        writer = self._pipeline.get("code_writer") if isinstance(self._pipeline, dict) else None
+        reviewer = self._pipeline.get("code_reviewer") if isinstance(self._pipeline, dict) else None
+        tester = self._pipeline.get("code_tester") if isinstance(self._pipeline, dict) else None
 
         if planner is None or writer is None or reviewer is None or tester is None:
-            raise PipelineResolutionError(
-                "Resolved code pipeline does not expose planner/writer/reviewer/tester."
-            )
+            if not callable(self._pipeline):
+                raise PipelineResolutionError(
+                    "Resolved code pipeline does not expose planner/writer/reviewer/tester."
+                )
+
+        if callable(self._pipeline):
+            return self._pipeline(task)
 
         plan_ok, plan_payload = planner.plan(
             context={
@@ -149,8 +142,6 @@ class CodePipelineAdapterV12:
         }
         test_ok, test_payload = tester.execute(task=test_task)
 
-        # Compatibility: if pytest reports no tests collected we still count the
-        # automated validation as successful for the architecture demonstration.
         if not test_ok and isinstance(test_payload, dict):
             stderr = str(test_payload.get("stderr", ""))
             stdout = str(test_payload.get("stdout", ""))
@@ -176,23 +167,11 @@ class CodePipelineAdapterV12:
 
 
 class CNPOSOrchestratorV12:
-    """CEO-style orchestrator for the CNPOS architecture.
-
-    Responsibilities:
-    - Accept objectives
-    - Build a generation queue
-    - Resolve a pipeline through PipelineMapV12
-    - Execute queue items via the pipeline adapter
-    - Register generated modules
-    - Return objective status
-
-    This module never writes code directly; it delegates all engineering work to
-    the pipeline layer.
-    """
+    """CEO-style orchestrator for the CNPOS architecture."""
 
     def __init__(self, repo_root: Optional[str] = None):
         self.repo_root = Path(repo_root).resolve() if repo_root else Path(__file__).resolve().parents[2]
-        self.pipeline_map = PipelineMapV12()
+        self.pipeline_map = PipelineMapV1_2()
         self.registry_path = self.repo_root / "module_registry_v1_2.json"
         self.objectives: List[Objective] = []
 
@@ -249,17 +228,6 @@ class CNPOSOrchestratorV12:
         )
 
     def _build_generation_queue(self, objective: Objective) -> List[Dict[str, Any]]:
-        """Build the work queue owned by the orchestrator.
-
-        Example output:
-        [
-            {
-                "module_path": "core/state/character_registry_v1_2.py",
-                "domain": "character",
-                "module_type": "state"
-            }
-        ]
-        """
         queue: List[Dict[str, Any]] = []
         for module_name in objective.modules:
             module_name = str(module_name).strip()

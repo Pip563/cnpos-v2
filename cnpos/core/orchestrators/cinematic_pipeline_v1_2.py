@@ -28,27 +28,12 @@ logger = logging.getLogger(__name__)
 
 class CinematicPipelineV1_2Error(Exception):
     """Raised when CinematicPipelineV1_2 encounters an unrecoverable error."""
-    pass
 
 
 class CinematicPipelineV1_2:
-    """
-    CinematicPipelineV1_2
+    """Deterministic cinematic orchestration pipeline for CNPOS v1_2."""
 
-    Deterministic cinematic orchestration pipeline for CNPOS v1_2.
-
-    Responsibilities:
-    - Orchestrate episode, scene, shot, and render workers.
-    - Use backend manager and continuity engine for semantic continuity.
-    - Validate payloads via ValidatorPipelineV1_2 and governance.
-    - Provide a single entry point for cinematic generation to higher-level
-      orchestrators (e.g., cnpos_orchestrator_v1_2).
-
-    Domain: CINEMATIC_PIPELINE
-    Version: v1_2
-    """
-
-    DOMAIN = "CINEMATIC_PIPELINE"
+    DOMAIN = "cinematic"
     VERSION = "v1_2"
 
     def __init__(
@@ -60,7 +45,7 @@ class CinematicPipelineV1_2:
         governance_validator: Optional[GovernanceValidatorV1_2] = None,
         worker_registry: Optional[WorkerRegistryV1_2] = None,
     ) -> None:
-        backend_manager: Optional[BackendManagerV1_2] = None,
+        self._backend_manager = backend_manager or BackendManagerV1_2()
         self._continuity_engine = continuity_engine or ContinuityEngineV1_2()
         self._validator_pipeline = validator_pipeline or ValidatorPipelineV1_2()
         self._governance_loader = governance_loader or GovernanceLoaderV1_2()
@@ -69,7 +54,6 @@ class CinematicPipelineV1_2:
         )
         self._worker_registry = worker_registry or WorkerRegistryV1_2()
 
-        # Direct worker instances (registered in WorkerRegistryV1_2 as well)
         self._episode_worker = EpisodeWorkerV1_2(
             backend_manager=self._backend_manager,
             validator_pipeline=self._validator_pipeline,
@@ -96,39 +80,7 @@ class CinematicPipelineV1_2:
             self._worker_registry,
         )
 
-    # -------------------------------------------------------------------------
-    # Public API
-    # -------------------------------------------------------------------------
-
-    def run(
-        self,
-        episode_payload: Dict[str, Any],
-        context: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
-        """
-        Orchestrate full cinematic processing for an episode payload.
-
-        Steps:
-        1. Validate governance configuration for 'episode', 'scene', 'shot', 'render'.
-        2. Generate episode-level structure.
-        3. Generate scenes from episode.
-        4. Generate shots from scenes.
-        5. Generate render payload from episode/scenes/shots.
-        6. Apply continuity checks across domains.
-
-        Args:
-            episode_payload: Episode-level payload.
-            context: Optional orchestration context.
-
-        Returns:
-            Dict[str, Any]: Aggregated cinematic pipeline result with keys:
-                - 'domain', 'version'
-                - 'episode'
-                - 'scenes'
-                - 'shots'
-                - 'render'
-                - 'continuity'
-        """
+    def run(self, episode_payload: Dict[str, Any], context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         context = context or {}
         logger.info(
             "CinematicPipelineV1_2.run invoked for episode_id=%s",
@@ -141,12 +93,8 @@ class CinematicPipelineV1_2:
             episode_result = self._run_episode(episode_payload, context)
             scenes_result = self._run_scenes(episode_result, context)
             shots_result = self._run_shots(scenes_result, context)
-            render_result = self._run_render(
-                episode_result, scenes_result, shots_result, context
-            )
-            continuity_result = self._run_continuity(
-                episode_result, scenes_result, shots_result, render_result, context
-            )
+            render_result = self._run_render(episode_result, scenes_result, shots_result, context)
+            continuity_result = self._run_continuity(episode_result, scenes_result, shots_result, render_result, context)
 
             result = {
                 "domain": self.DOMAIN,
@@ -179,14 +127,7 @@ class CinematicPipelineV1_2:
                 f"Unexpected error in CinematicPipelineV1_2.run: {exc}"
             ) from exc
 
-    # -------------------------------------------------------------------------
-    # Internal helpers
-    # -------------------------------------------------------------------------
-
     def _validate_governance(self) -> None:
-        """
-        Validate governance configuration for cinematic domains.
-        """
         for domain in ("episode", "scene", "shot", "render"):
             violations = self._governance_validator.validate_governance_config(domain)
             if violations:
@@ -199,60 +140,14 @@ class CinematicPipelineV1_2:
                     f"Governance configuration invalid for domain '{domain}': {violations}"
                 )
 
-    def _run_episode(
-        self,
-        episode_payload: Dict[str, Any],
-        context: Dict[str, Any],
-    ) -> Dict[str, Any]:
-        """
-        Run episode worker to produce episode-level structure.
-        """
-        episode_result = self._episode_worker.run(
-            episode_payload=episode_payload,
-            context=context,
-        )
-        logger.debug(
-            "CinematicPipelineV1_2._run_episode result keys=%s",
-            list(episode_result.keys()),
-        )
-        return episode_result
+    def _run_episode(self, episode_payload: Dict[str, Any], context: Dict[str, Any]) -> Dict[str, Any]:
+        return self._episode_worker.run(episode_payload=episode_payload, context=context)
 
-    def _run_scenes(
-        self,
-        episode_result: Dict[str, Any],
-        context: Dict[str, Any],
-    ) -> List[Dict[str, Any]]:
-        """
-        Run scene worker to produce scenes from episode result.
-        """
-        scenes_result = self._scene_worker.run(
-            episode_payload=episode_result,
-            context=context,
-        )
-        logger.debug(
-            "CinematicPipelineV1_2._run_scenes produced %d scenes",
-            len(scenes_result) if isinstance(scenes_result, list) else 0,
-        )
-        return scenes_result
+    def _run_scenes(self, episode_result: Dict[str, Any], context: Dict[str, Any]) -> List[Dict[str, Any]]:
+        return self._scene_worker.run(episode_payload=episode_result, context=context)
 
-    def _run_shots(
-        self,
-        scenes_result: List[Dict[str, Any]],
-        context: Dict[str, Any],
-    ) -> List[Dict[str, Any]]:
-        """
-        Run shot worker to produce shots from scenes.
-        """
-        shots_result = self._shot_worker.run(
-            scenes_payload=scenes_result,
-            context=context,
-        )
-        logger.debug(
-            backend_manager: Optional[BackendManagerV1_2] = None,
-        "CinematicPipelineV1_2._run_shots produced %d shots",
-            len(shots_result) if isinstance(shots_result, list) else 0,
-        )
-        return shots_result
+    def _run_shots(self, scenes_result: List[Dict[str, Any]], context: Dict[str, Any]) -> List[Dict[str, Any]]:
+        return self._shot_worker.run(scenes_payload=scenes_result, context=context)
 
     def _run_render(
         self,
@@ -261,20 +156,12 @@ class CinematicPipelineV1_2:
         shots_result: List[Dict[str, Any]],
         context: Dict[str, Any],
     ) -> Dict[str, Any]:
-        """
-        Run render worker to produce final render payload.
-        """
-        render_result = self._render_worker.run(
+        return self._render_worker.run(
             episode_payload=episode_result,
             scenes_payload=scenes_result,
             shots_payload=shots_result,
             context=context,
         )
-        logger.debug(
-            "CinematicPipelineV1_2._run_render result keys=%s",
-            list(render_result.keys()),
-        )
-        return render_result
 
     def _run_continuity(
         self,
@@ -284,9 +171,6 @@ class CinematicPipelineV1_2:
         render_result: Dict[str, Any],
         context: Dict[str, Any],
     ) -> Dict[str, Any]:
-        """
-        Run continuity engine across episode, scenes, shots, and render payloads.
-        """
         continuity_input = {
             "episode": episode_result,
             "scenes": scenes_result,
@@ -294,12 +178,7 @@ class CinematicPipelineV1_2:
             "render": render_result,
             "context": context,
         }
-        continuity_result = self._continuity_engine.run(continuity_input)
-        logger.debug(
-            "CinematicPipelineV1_2._run_continuity result keys=%s",
-            list(continuity_result.keys()),
-        )
-        return continuity_result
+        return self._continuity_engine.run(continuity_input)
 
 
 __all__ = ["CinematicPipelineV1_2", "CinematicPipelineV1_2Error"]

@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, Optional, Tuple
 
-from cnpos.core.agents.prompt_agent import PromptAgent
+from cnpos.core.agents.prompt_agent_v1_2 import PromptAgentV1_2
 from cnpos.core.validators.validator_pipeline_v1_2 import (
     ValidatorPipelineV1_2,
     ValidatorPipelineV1_2Error,
@@ -15,7 +15,6 @@ logger = logging.getLogger(__name__)
 
 class PromptWorkerV1_2Error(Exception):
     """Raised when PromptWorkerV1_2 encounters an unrecoverable error."""
-    pass
 
 
 class PromptWorkerV1_2:
@@ -27,7 +26,7 @@ class PromptWorkerV1_2:
     Responsibilities:
     - Accept raw prompt payloads from orchestrators/pipelines.
     - Validate prompt payloads via ValidatorPipelineV1_2.
-    - Delegate actual LLM interaction to PromptAgent.
+    - Delegate actual LLM interaction to PromptAgentV1_2.
     - Provide a stable prompt domain entry point for both cinematic and code pipelines.
 
     Domain: prompt
@@ -40,12 +39,12 @@ class PromptWorkerV1_2:
     def __init__(
         self,
         validator_pipeline: Optional[ValidatorPipelineV1_2] = None,
-        prompt_agent: Optional[PromptAgent] = None,
+        prompt_agent: Optional[PromptAgentV1_2] = None,
     ) -> None:
-        super().__init__(domain=self.DOMAIN, version=self.VERSION)
+        super().__init__()
 
         self._validator_pipeline = validator_pipeline or ValidatorPipelineV1_2()
-        self._prompt_agent = prompt_agent or PromptAgent()
+        self._prompt_agent = prompt_agent or PromptAgentV1_2()
 
         logger.debug(
             "PromptWorkerV1_2 initialized with validator_pipeline=%s prompt_agent=%s",
@@ -53,29 +52,11 @@ class PromptWorkerV1_2:
             self._prompt_agent,
         )
 
-    # -------------------------------------------------------------------------
-    # Runtime worker API
-    # -------------------------------------------------------------------------
-
     def run(
         self,
         payload: Dict[str, Any],
         context: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        """
-        Execute a prompt task.
-
-        Args:
-            payload: Prompt payload (prompt text, parameters, metadata).
-            context: Optional orchestration context.
-
-        Returns:
-            Dict[str, Any]: Prompt execution result, including:
-                - 'domain'
-                - 'version'
-                - 'validated_payload'
-                - 'agent_result'
-        """
         context = context or {}
         logger.info(
             "PromptWorkerV1_2.run invoked for prompt_id=%s",
@@ -117,18 +98,7 @@ class PromptWorkerV1_2:
                 f"Unexpected error in PromptWorkerV1_2.run: {exc}"
             ) from exc
 
-    # -------------------------------------------------------------------------
-    # Internal helpers
-    # -------------------------------------------------------------------------
-
     def _validate_payload(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Validate prompt payload via ValidatorPipelineV1_2.
-
-        Notes:
-        - Prompt payloads are generally lighter than episode/scene/shot,
-          so we do not apply a JSON contract here; governance rules still apply.
-        """
         logger.debug(
             "PromptWorkerV1_2._validate_payload payload_keys=%s",
             list(payload.keys()),
@@ -149,13 +119,6 @@ class PromptWorkerV1_2:
         self,
         payload: Dict[str, Any],
     ) -> Tuple[str, Dict[str, Any]]:
-        """
-        Extract prompt text and parameters from the validated payload.
-
-        Expected fields:
-            - 'prompt': main prompt text (required).
-            - 'parameters': optional dict of LLM parameters.
-        """
         prompt = str(payload.get("prompt", "")).strip()
         parameters = payload.get("parameters") or {}
 
@@ -175,12 +138,6 @@ class PromptWorkerV1_2:
         payload: Dict[str, Any],
         context: Dict[str, Any],
     ) -> Dict[str, Any]:
-        """
-        Execute prompt via PromptAgent.
-
-        Returns:
-            Dict[str, Any]: Agent result.
-        """
         prompt, parameters = self._extract_prompt_and_parameters(payload)
 
         logger.debug(
@@ -188,9 +145,12 @@ class PromptWorkerV1_2:
             context.get("backend_key"),
         )
 
-        result = self._prompt_agent.run_prompt(
-            prompt=prompt,
-            parameters=parameters,
+        result = self._prompt_agent.generate_prompt(
+            request={
+                "task": prompt,
+                "inputs": payload.get("inputs"),
+                "constraints": payload.get("constraints"),
+            },
             context=context,
         )
 

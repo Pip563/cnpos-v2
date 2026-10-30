@@ -34,9 +34,7 @@ logger = logging.getLogger(__name__)
 
 
 class CodePipelineV1_2Error(Exception):
-    """
-    Raised when CodePipelineV1_2 encounters an unrecoverable error.
-    """
+    """Raised when CodePipelineV1_2 encounters an unrecoverable error."""
 
 
 class CodePipelineV1_2:
@@ -47,8 +45,7 @@ class CodePipelineV1_2:
     - Coordinate planner, reviewer, rewriter and test agents.
     - Enforce strict v1_2 governance.
     - Produce deterministic pipeline outputs.
-    - Provide the canonical import target expected by
-      pipeline_map_v1_2.py.
+    - Provide the canonical import target expected by pipeline_map_v1_2.py.
     """
 
     VERSION = "v1_2"
@@ -63,28 +60,12 @@ class CodePipelineV1_2:
         validator_pipeline: Optional[ValidatorPipelineV1_2] = None,
     ) -> None:
         self._planner = planner_agent or AutomationPlannerAgentV1_2()
-
-        self._reviewer = (
-            reviewer_agent or AutomationReviewerAgentV1_2()
-        )
-
-        self._rewriter = (
-            rewriter_agent or AutomationRewriterAgentV1_2()
-        )
-
+        self._reviewer = reviewer_agent or AutomationReviewerAgentV1_2()
+        self._rewriter = rewriter_agent or AutomationRewriterAgentV1_2()
         self._tester = test_agent or AutomationTestAgentV1_2()
+        self._validator_pipeline = validator_pipeline or ValidatorPipelineV1_2()
 
-        self._validator_pipeline = (
-            validator_pipeline or ValidatorPipelineV1_2()
-        )
-
-        logger.debug(
-            "CodePipelineV1_2 initialized."
-        )
-
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
+        logger.debug("CodePipelineV1_2 initialized.")
 
     def run(
         self,
@@ -94,29 +75,6 @@ class CodePipelineV1_2:
         code: str = "",
         context: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        """
-        Execute the deterministic code pipeline.
-
-        Args:
-            module_path:
-                Target module path.
-
-            domain:
-                Logical domain.
-
-            module_type:
-                Logical module type.
-
-            code:
-                Existing code content if available.
-
-            context:
-                Optional orchestration context.
-
-        Returns:
-            Dict[str, Any]:
-                Pipeline execution result.
-        """
         context = context or {}
 
         try:
@@ -127,10 +85,7 @@ class CodePipelineV1_2:
                 context=context,
             )
 
-            automation_id = plan.get(
-                "automation_id",
-                "unknown",
-            )
+            automation_id = plan.get("automation_id", "unknown")
 
             review = self._reviewer.review_module(
                 automation_id=automation_id,
@@ -170,17 +125,15 @@ class CodePipelineV1_2:
                 "rewrite": rewritten,
             }
 
-            validated_payload = (
-                self._validator_pipeline.validate(
-                    domain="automation",
-                    payload=payload,
-                    contract_schema=None,
-                    governance_loader=None,
-                    context={
-                        "pipeline": self.DOMAIN,
-                        "version": self.VERSION,
-                    },
-                )
+            validated_payload = self._validator_pipeline.validate(
+                domain="automation",
+                payload=payload,
+                contract_schema=None,
+                governance_loader=None,
+                context={
+                    "pipeline": self.DOMAIN,
+                    "version": self.VERSION,
+                },
             )
 
             return {
@@ -201,10 +154,7 @@ class CodePipelineV1_2:
                 exc,
                 exc_info=True,
             )
-
-            raise CodePipelineV1_2Error(
-                str(exc)
-            ) from exc
+            raise CodePipelineV1_2Error(str(exc)) from exc
 
         except Exception as exc:
             logger.error(
@@ -212,22 +162,7 @@ class CodePipelineV1_2:
                 exc,
                 exc_info=True,
             )
-
-            raise CodePipelineV1_2Error(
-                f"Unexpected pipeline failure: {exc}"
-            ) from exc
+            raise CodePipelineV1_2Error(f"Unexpected pipeline failure: {exc}") from exc
 
 
-# ----------------------------------------------------------------------
-# Compatibility aliases
-# ----------------------------------------------------------------------
-
-CodePipelineV1_2 = CodeAutomationPipelineV1_2
-CodePipelineV1_2Error = CodeAutomationPipelineV1_2Error
-
-__all__ = [
-    "CodeAutomationPipelineV1_2",
-    "CodeAutomationPipelineV1_2Error",
-    "CodePipelineV1_2",
-    "CodePipelineV1_2Error",
-]
+__all__ = ["CodePipelineV1_2", "CodePipelineV1_2Error"]

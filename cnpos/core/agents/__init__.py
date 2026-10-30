@@ -16,7 +16,7 @@ from cnpos.core.agents.code_planner_agent import CodePlannerAgent, CodePlannerAg
 from cnpos.core.agents.code_reviewer_agent import CodeReviewerAgent, CodeReviewerAgentV1_2Error
 from cnpos.core.agents.code_test_agent import CodeTestAgent, CodeTestAgentV1_2Error
 from cnpos.core.agents.code_writer_agent import CodeWriterAgent, CodeWriterAgentV1_2Error
-from cnpos.core.agents.prompt_agent import PromptAgent, PromptAgentV1_2Error
+from cnpos.core.agents.prompt_agent_v1_2 import PromptAgent, PromptAgentV1_2, PromptAgentV1_2Error
 
 logger = logging.getLogger(__name__)
 
@@ -36,5 +36,6 @@ __all__ = [
     "CodeWriterAgent",
     "CodeWriterAgentV1_2Error",
     "PromptAgent",
+    "PromptAgentV1_2",
     "PromptAgentV1_2Error",
 ]
