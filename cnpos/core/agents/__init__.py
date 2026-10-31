@@ -1,41 +1,23 @@
-# cnpos/core/agents/__init__.py
+# cnpos/core/runtime/workers/__init__.py
 from __future__ import annotations
 
 import logging
 
-from cnpos.core.agents.character_arc_worker_v1_2 import CharacterArcWorkerV1_2, CharacterArcWorkerV1_2Error
-from cnpos.core.agents.character_continuity_worker_v1_2 import (
-    CharacterContinuityWorkerV1_2,
-    CharacterContinuityWorkerV1_2Error,
-)
-from cnpos.core.agents.character_profile_worker_v1_2 import (
-    CharacterProfileWorkerV1_2,
-    CharacterProfileWorkerV1_2Error,
-)
-from cnpos.core.agents.code_planner_agent import CodePlannerAgent, CodePlannerAgentV1_2Error
-from cnpos.core.agents.code_reviewer_agent import CodeReviewerAgent, CodeReviewerAgentV1_2Error
-from cnpos.core.agents.code_test_agent import CodeTestAgent, CodeTestAgentV1_2Error
-from cnpos.core.agents.code_writer_agent import CodeWriterAgent, CodeWriterAgentV1_2Error
-from cnpos.core.agents.prompt_agent_v1_2 import PromptAgent, PromptAgentV1_2, PromptAgentV1_2Error
+from cnpos.core.runtime.workers.episode_worker_v1_2 import EpisodeWorkerV1_2, EpisodeWorkerV1_2Error
+from cnpos.core.runtime.workers.prompt_worker_v1_2 import PromptWorkerV1_2
+from cnpos.core.runtime.workers.render_worker_v1_2 import RenderWorkerV1_2
+from cnpos.core.runtime.workers.scene_worker_v1_2 import SceneWorkerV1_2
+from cnpos.core.runtime.workers.shot_worker_v1_2 import ShotWorkerV1_2
+from cnpos.core.runtime.workers.worker_registry_v1_2 import WorkerRegistryV1_2
 
 logger = logging.getLogger(__name__)
 
 __all__ = [
-    "CharacterArcWorkerV1_2",
-    "CharacterArcWorkerV1_2Error",
-    "CharacterContinuityWorkerV1_2",
-    "CharacterContinuityWorkerV1_2Error",
-    "CharacterProfileWorkerV1_2",
-    "CharacterProfileWorkerV1_2Error",
-    "CodePlannerAgent",
-    "CodePlannerAgentV1_2Error",
-    "CodeReviewerAgent",
-    "CodeReviewerAgentV1_2Error",
-    "CodeTestAgent",
-    "CodeTestAgentV1_2Error",
-    "CodeWriterAgent",
-    "CodeWriterAgentV1_2Error",
-    "PromptAgent",
-    "PromptAgentV1_2",
-    "PromptAgentV1_2Error",
+    "EpisodeWorkerV1_2",
+    "EpisodeWorkerV1_2Error",
+    "SceneWorkerV1_2",
+    "ShotWorkerV1_2",
+    "RenderWorkerV1_2",
+    "WorkerRegistryV1_2",
+    "PromptWorkerV1_2",
 ]
