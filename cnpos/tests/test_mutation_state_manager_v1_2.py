@@ -1,4 +1,4 @@
-# tests/test_mutation_state_manager_v1_2.py
+# cnpos/tests/test_mutation_state_manager_v1_2.py
 
 import time
 from typing import Any, Dict
@@ -10,17 +10,6 @@ from cnpos.core.state.mutation_state_manager_v1_2 import MutationStateManagerV1_
 
 @pytest.fixture
 def mutation_state_manager() -> MutationStateManagerV1_2:
-    """
-    Provide a fresh MutationStateManagerV1_2 instance for each test.
-
-    MutationStateManagerV1_2 is responsible for:
-    - Tracking all mutations applied to the system
-    - Providing mutation history per domain
-    - Providing mutation diffs (old → new)
-    - Providing rollback snapshots
-    - Providing mutation timelines for continuity + governance
-    - Integrating with orchestrator + validator pipeline
-    """
     return MutationStateManagerV1_2()
 
 
@@ -47,11 +36,6 @@ def _make_impact_summary(risk: str = "medium") -> Dict[str, Any]:
     }
 
 
-# ----------------------------------------------------------------------
-# record_mutation: global log + domain timelines
-# ----------------------------------------------------------------------
-
-
 def test_record_mutation_tracks_global_and_domain_timeline(
     mutation_state_manager: MutationStateManagerV1_2,
 ) -> None:
@@ -76,4 +60,57 @@ def test_record_mutation_tracks_global_and_domain_timeline(
 
     entry = global_log[0]
     assert entry["mutation_id"] == mutation_id
-    assert entry["domain
+    assert entry["domain"] == "code"
+    assert entry["mutation_type"] == "FUNCTION_ADDED"
+    assert entry["risk_level"] == "medium"
+    assert entry["state_before"] == snapshot
+
+    timeline = mutation_state_manager.get_mutation_timeline("code")
+    assert len(timeline) == 1
+    assert timeline[0]["mutation_id"] == mutation_id
+
+
+def test_compute_diff_returns_added_removed_and_changed() -> None:
+    before = {"a": 1, "b": 2, "c": 3}
+    after = {"a": 1, "b": 9, "d": 4}
+
+    diff = MutationStateManagerV1_2().compute_diff(before=before, after=after)
+
+    assert diff["added"] == {"d": 4}
+    assert diff["removed"] == {"c": 3}
+    assert diff["changed"]["b"] == {"old": 2, "new": 9}
+
+
+def test_create_rollback_point_and_restore_snapshot() -> None:
+    manager = MutationStateManagerV1_2()
+    snapshot = {"module": "core.runtime.backend_manager_v1_2", "status": "ready"}
+
+    manager.create_rollback_point("before-change", snapshot)
+    restored = manager.rollback_to("before-change")
+
+    assert restored == snapshot
+    assert manager.rollback_to("missing") is None
+
+
+def test_find_mutation_and_last_mutation() -> None:
+    manager = MutationStateManagerV1_2()
+    payload = _make_payload(domain="story")
+    snapshot = {"story": "draft"}
+
+    mutation_id = manager.record_mutation(
+        domain="story",
+        mutation_type="PLOT_ADDED",
+        payload=payload,
+        active_state_snapshot=snapshot,
+        impact_summary={"risk_level": "low", "affected_components": ["story"], "notes": "story"},
+        risk_level="low",
+    )
+
+    assert manager.find_mutation(mutation_id)["mutation_id"] == mutation_id
+    assert manager.last_mutation("story")["mutation_id"] == mutation_id
+    assert manager.last_mutation()["mutation_id"] == mutation_id
+
+
+def test_get_mutation_timeline_returns_empty_for_unknown_domain() -> None:
+    manager = MutationStateManagerV1_2()
+    assert manager.get_mutation_timeline("unknown") == []
