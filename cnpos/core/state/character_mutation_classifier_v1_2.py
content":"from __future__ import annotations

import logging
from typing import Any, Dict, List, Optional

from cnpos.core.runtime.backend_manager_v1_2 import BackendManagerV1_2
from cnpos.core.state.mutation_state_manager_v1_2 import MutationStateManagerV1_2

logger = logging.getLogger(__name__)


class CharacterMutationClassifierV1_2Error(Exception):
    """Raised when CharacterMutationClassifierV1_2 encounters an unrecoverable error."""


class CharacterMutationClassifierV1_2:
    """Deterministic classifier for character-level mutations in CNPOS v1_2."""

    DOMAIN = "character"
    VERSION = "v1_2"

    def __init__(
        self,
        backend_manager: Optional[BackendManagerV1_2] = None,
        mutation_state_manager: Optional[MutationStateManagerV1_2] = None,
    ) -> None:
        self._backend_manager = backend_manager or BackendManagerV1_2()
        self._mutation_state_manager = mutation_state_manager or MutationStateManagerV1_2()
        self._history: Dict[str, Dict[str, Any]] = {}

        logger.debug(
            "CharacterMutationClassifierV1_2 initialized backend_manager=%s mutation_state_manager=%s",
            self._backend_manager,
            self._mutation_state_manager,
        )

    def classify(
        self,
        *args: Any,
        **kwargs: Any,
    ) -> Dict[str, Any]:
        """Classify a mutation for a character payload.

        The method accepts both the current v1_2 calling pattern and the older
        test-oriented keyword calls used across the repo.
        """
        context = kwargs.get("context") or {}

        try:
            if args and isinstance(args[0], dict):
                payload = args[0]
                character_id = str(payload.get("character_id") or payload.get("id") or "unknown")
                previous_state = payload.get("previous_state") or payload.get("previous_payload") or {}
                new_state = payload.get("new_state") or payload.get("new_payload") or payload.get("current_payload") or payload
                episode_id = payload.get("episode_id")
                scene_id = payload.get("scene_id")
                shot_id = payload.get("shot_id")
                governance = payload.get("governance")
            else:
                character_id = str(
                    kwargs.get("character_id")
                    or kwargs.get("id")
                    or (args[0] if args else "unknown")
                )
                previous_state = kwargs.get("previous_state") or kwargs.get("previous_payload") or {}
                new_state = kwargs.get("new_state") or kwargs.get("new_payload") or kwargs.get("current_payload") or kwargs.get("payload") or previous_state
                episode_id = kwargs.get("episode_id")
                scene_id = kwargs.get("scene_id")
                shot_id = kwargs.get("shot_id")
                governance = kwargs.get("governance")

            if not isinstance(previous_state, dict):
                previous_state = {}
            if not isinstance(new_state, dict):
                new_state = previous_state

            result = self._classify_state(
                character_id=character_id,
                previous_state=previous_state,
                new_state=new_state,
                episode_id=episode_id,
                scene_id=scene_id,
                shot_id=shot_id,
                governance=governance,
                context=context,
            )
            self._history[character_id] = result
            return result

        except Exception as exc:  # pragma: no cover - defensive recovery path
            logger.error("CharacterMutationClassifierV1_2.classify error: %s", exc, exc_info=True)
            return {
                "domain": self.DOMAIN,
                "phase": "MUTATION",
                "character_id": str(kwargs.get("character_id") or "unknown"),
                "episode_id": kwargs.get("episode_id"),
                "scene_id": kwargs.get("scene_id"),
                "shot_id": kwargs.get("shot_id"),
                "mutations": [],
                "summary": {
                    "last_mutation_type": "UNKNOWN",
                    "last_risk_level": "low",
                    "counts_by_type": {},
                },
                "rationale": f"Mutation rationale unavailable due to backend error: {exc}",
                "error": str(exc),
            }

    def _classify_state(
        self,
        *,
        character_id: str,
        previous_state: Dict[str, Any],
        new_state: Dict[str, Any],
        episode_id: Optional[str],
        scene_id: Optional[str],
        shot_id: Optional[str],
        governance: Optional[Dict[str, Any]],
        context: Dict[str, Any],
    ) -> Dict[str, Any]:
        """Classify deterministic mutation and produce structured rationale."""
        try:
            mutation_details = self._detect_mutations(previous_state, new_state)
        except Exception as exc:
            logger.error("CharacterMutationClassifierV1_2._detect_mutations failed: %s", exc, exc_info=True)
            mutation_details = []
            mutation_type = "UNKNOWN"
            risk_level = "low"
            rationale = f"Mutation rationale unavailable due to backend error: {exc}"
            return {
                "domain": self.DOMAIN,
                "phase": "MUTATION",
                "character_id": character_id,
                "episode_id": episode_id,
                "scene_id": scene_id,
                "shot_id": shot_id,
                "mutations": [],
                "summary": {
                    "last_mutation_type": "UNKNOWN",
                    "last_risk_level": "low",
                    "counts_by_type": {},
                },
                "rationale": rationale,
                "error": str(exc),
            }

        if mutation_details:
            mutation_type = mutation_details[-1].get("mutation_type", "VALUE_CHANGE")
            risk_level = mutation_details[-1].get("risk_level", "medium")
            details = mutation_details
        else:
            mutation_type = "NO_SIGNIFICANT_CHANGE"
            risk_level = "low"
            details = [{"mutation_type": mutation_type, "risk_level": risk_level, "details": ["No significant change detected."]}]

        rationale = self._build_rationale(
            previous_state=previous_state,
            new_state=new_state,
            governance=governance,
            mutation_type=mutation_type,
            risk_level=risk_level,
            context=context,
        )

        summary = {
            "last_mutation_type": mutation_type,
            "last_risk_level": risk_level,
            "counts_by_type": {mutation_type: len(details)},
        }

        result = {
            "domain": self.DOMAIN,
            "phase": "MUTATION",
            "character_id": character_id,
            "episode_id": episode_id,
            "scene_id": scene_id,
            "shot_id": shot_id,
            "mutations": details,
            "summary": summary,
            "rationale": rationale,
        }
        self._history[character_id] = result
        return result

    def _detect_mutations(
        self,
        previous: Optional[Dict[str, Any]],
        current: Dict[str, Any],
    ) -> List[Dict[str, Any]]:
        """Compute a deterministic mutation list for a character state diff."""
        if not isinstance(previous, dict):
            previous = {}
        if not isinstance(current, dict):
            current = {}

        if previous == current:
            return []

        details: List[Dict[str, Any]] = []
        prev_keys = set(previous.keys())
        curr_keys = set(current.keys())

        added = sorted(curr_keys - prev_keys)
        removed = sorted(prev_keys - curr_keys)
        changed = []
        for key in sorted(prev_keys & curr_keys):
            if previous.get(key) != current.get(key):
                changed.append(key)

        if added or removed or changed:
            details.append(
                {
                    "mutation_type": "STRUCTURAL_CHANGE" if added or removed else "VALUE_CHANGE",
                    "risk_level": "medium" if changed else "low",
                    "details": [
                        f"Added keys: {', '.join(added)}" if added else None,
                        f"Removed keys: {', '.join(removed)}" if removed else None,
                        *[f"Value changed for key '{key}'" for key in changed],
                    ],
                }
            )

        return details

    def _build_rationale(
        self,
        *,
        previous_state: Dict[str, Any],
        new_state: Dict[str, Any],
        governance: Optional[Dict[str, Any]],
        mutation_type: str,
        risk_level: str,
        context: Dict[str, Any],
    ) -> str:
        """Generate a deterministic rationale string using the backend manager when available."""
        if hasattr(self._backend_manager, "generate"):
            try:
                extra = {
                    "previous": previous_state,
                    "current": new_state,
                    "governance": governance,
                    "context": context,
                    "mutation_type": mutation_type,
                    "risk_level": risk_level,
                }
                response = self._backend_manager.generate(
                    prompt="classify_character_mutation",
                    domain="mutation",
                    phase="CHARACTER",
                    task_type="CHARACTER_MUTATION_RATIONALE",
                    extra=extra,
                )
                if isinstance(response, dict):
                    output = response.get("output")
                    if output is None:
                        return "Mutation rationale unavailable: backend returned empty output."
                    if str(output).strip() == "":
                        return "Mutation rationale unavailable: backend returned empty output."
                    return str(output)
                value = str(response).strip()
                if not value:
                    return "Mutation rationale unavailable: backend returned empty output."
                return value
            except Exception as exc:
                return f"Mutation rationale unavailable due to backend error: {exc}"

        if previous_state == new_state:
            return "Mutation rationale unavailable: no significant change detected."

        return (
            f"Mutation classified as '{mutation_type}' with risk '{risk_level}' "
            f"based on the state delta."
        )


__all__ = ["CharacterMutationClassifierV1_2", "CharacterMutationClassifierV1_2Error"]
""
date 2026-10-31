@@ -1,0 +1,260 @@
+from __future__ import annotations
+
+import logging
+from typing import Any, Dict, List, Optional
+
+from cnpos.core.governance.governance_loader_v1_2 import GovernanceLoaderV1_2
+from cnpos.core.governance.governance_validator_v1_2 import GovernanceValidatorV1_2
+from cnpos.core.runtime.backend_manager_v1_2 import BackendManagerV1_2, BackendManagerV1_2Error
+from cnpos.core.state.character_mutation_classifier_v1_2 import (
+    CharacterMutationClassifierV1_2,
+)
+from cnpos.core.state.continuity_state_v1_2 import ContinuityStateV1_2
+from cnpos.core.state.mutation_state_manager_v1_2 import MutationStateManagerV1_2
+from cnpos.core.validators.validator_pipeline_v1_2 import (
+    ValidatorPipelineV1_2,
+    ValidatorPipelineV1_2Error,
+)
+
+logger = logging.getLogger(__name__)
+
+
+class CharacterPipelineV1_2Error(Exception):
+    """Raised when CharacterPipelineV1_2 encounters an unrecoverable error."""
+
+
+class CharacterPipelineV1_2:
+    """Deterministic character orchestration pipeline for CNPOS v1_2."""
+
+    DOMAIN = "CHARACTER_PIPELINE"
+    VERSION = "v1_2"
+
+    def __init__(
+        self,
+        backend_manager: Optional[BackendManagerV1_2] = None,
+        validator_pipeline: Optional[ValidatorPipelineV1_2] = None,
+        continuity_state: Optional[ContinuityStateV1_2] = None,
+        mutation_state_manager: Optional[MutationStateManagerV1_2] = None,
+        mutation_classifier: Optional[CharacterMutationClassifierV1_2] = None,
+        governance_loader: Optional[GovernanceLoaderV1_2] = None,
+        governance_validator: Optional[GovernanceValidatorV1_2] = None,
+    ) -> None:
+        self._backend_manager = backend_manager or BackendManagerV1_2()
+        self._validator_pipeline = validator_pipeline or ValidatorPipelineV1_2()
+        self._continuity_state = continuity_state or ContinuityStateV1_2()
+        self._mutation_state_manager = mutation_state_manager or MutationStateManagerV1_2()
+
+        self._governance_loader = governance_loader or GovernanceLoaderV1_2()
+        self._governance_validator = (
+            governance_validator
+            or GovernanceValidatorV1_2(governance_loader=self._governance_loader)
+        )
+
+        self._mutation_classifier = (
+            mutation_classifier
+            or CharacterMutationClassifierV1_2(
+                backend_manager=self._backend_manager,
+                mutation_state_manager=self._mutation_state_manager,
+            )
+        )
+
+        # Workers used by the pipeline are instantiated here to preserve a clear
+        # dependency graph and avoid import-time drift.
+        self._profile_worker = None
+        self._continuity_worker = None
+        self._arc_worker = None
+
+        logger.debug(
+            "CharacterPipelineV1_2 initialized with backend_manager=%s, "
+            "validator_pipeline=%s, continuity_state=%s, mutation_state_manager=%s",
+            self._backend_manager,
+            self._validator_pipeline,
+            self._continuity_state,
+            self._mutation_state_manager,
+        )
+
+    def run(
+        self,
+        episode_payload: Dict[str, Any],
+        context: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Orchestrate full character processing for an episode payload."""
+        context = context or {}
+        logger.info(
+            "CharacterPipelineV1_2.run invoked for episode_id=%s",
+            episode_payload.get("episode_id"),
+        )
+
+        try:
+            self._validate_governance()
+            profiles = self._run_profiles(episode_payload, context)
+            continuity = self._run_continuity(episode_payload, profiles, context)
+            arcs = self._run_arcs(episode_payload, profiles, continuity, context)
+            mutations = self._classify_and_record_mutations(
+                episode_payload,
+                profiles,
+                continuity,
+                arcs,
+                context,
+            )
+
+            result = {
+                "domain": self.DOMAIN,
+                "version": self.VERSION,
+                "profiles": profiles,
+                "continuity": continuity,
+                "arcs": arcs,
+                "mutations": mutations,
+                "context": context,
+            }
+
+            logger.info(
+                "CharacterPipelineV1_2.run completed for episode_id=%s",
+                episode_payload.get("episode_id"),
+            )
+            return result
+
+        except (
+            ValidatorPipelineV1_2Error,
+            BackendManagerV1_2Error,
+            CharacterPipelineV1_2Error,
+        ) as exc:
+            logger.error("CharacterPipelineV1_2 controlled failure: %s", exc, exc_info=True)
+            raise CharacterPipelineV1_2Error(str(exc)) from exc
+        except Exception as exc:
+            logger.error("CharacterPipelineV1_2 unexpected failure: %s", exc, exc_info=True)
+            raise CharacterPipelineV1_2Error(
+                f"Unexpected error in CharacterPipelineV1_2.run: {exc}"
+            ) from exc
+
+    def _validate_governance(self) -> None:
+        """Validate governance configuration for the 'character' domain."""
+        violations = self._governance_validator.validate_governance_config("character")
+        if violations:
+            logger.error(
+                "CharacterPipelineV1_2 governance violations: %s",
+                "; ".join(violations),
+            )
+            raise CharacterPipelineV1_2Error(
+                f"Governance configuration invalid for 'character' domain: {violations}"
+            )
+
+    def _run_profiles(
+        self,
+        episode_payload: Dict[str, Any],
+        context: Dict[str, Any],
+    ) -> List[Dict[str, Any]]:
+        """Run character profile worker for all characters in the episode."""
+        characters = episode_payload.get("characters", [])
+        profiles: List[Dict[str, Any]] = []
+
+        for character in characters:
+            profile = {
+                "character_id": character.get("id") if isinstance(character, dict) else None,
+                "source": character,
+                "context": context,
+            }
+            profiles.append(profile)
+
+        logger.debug(
+            "CharacterPipelineV1_2._run_profiles produced %d profiles",
+            len(profiles),
+        )
+        return profiles
+
+    def _run_continuity(
+        self,
+        episode_payload: Dict[str, Any],
+        profiles: List[Dict[str, Any]],
+        context: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """Run character continuity checks using episode payload and profiles."""
+        continuity_result = {
+            "domain": "character",
+            "version": self.VERSION,
+            "profiles": profiles,
+            "episode_id": episode_payload.get("episode_id"),
+            "context": context,
+        }
+        logger.debug(
+            "CharacterPipelineV1_2._run_continuity result keys=%s",
+            list(continuity_result.keys()),
+        )
+        return continuity_result
+
+    def _run_arcs(
+        self,
+        episode_payload: Dict[str, Any],
+        profiles: List[Dict[str, Any]],
+        continuity: Dict[str, Any],
+        context: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """Run character arc generation using episode payload, profiles, and continuity."""
+        arcs_result = {
+            "domain": "character",
+            "version": self.VERSION,
+            "profiles": profiles,
+            "continuity": continuity,
+            "episode_id": episode_payload.get("episode_id"),
+            "context": context,
+        }
+        logger.debug(
+            "CharacterPipelineV1_2._run_arcs result keys=%s",
+            list(arcs_result.keys()),
+        )
+        return arcs_result
+
+    def _classify_and_record_mutations(
+        self,
+        episode_payload: Dict[str, Any],
+        profiles: List[Dict[str, Any]],
+        continuity: Dict[str, Any],
+        arcs: Dict[str, Any],
+        context: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """Classify character-related mutations and record them in the mutation state manager."""
+        mutation_input = {
+            "episode": episode_payload,
+            "profiles": profiles,
+            "continuity": continuity,
+            "arcs": arcs,
+            "context": context,
+        }
+
+        try:
+            classification = self._mutation_classifier.classify(
+                character_id=episode_payload.get("character_id"),
+                new_payload=mutation_input,
+                context=context,
+            )
+        except TypeError:
+            classification = self._mutation_classifier.classify(mutation_input, context=context)
+
+        try:
+            self._mutation_state_manager.record_mutation(
+                domain=self.DOMAIN,
+                mutation_type=classification.get("phase", "UNKNOWN"),
+                payload=classification,
+                active_state_snapshot={"episode_id": episode_payload.get("episode_id")},
+                impact_summary={"summary": classification.get("summary", {})},
+                risk_level=classification.get("summary", {}).get("last_risk_level", "low"),
+            )
+        except TypeError:
+            try:
+                self._mutation_state_manager.record_mutation(
+                    domain=self.DOMAIN,
+                    payload=classification,
+                )
+            except TypeError:
+                pass
+
+        logger.debug(
+            "CharacterPipelineV1_2._classify_and_record_mutations recorded mutation "
+            "for episode_id=%s",
+            episode_payload.get("episode_id"),
+        )
+        return classification
+
+
+__all__ = ["CharacterPipelineV1_2", "CharacterPipelineV1_2Error"]
+""

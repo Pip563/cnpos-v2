@@ -1,0 +1,144 @@
+from __future__ import annotations
+
+import logging
+from typing import Any, Callable, Dict, Optional
+
+
+logger = logging.getLogger(__name__)
+
+
+class BackendManagerV1_2Error(Exception):
+    """Raised when BackendManagerV1_2 cannot execute or route a task."""
+
+
+class BackendManagerV1_2:
+    """Deterministic backend manager for CNPOS v1_2.
+
+    Responsibilities:
+    - Register backend handlers.
+    - Route tasks to registered backends.
+    - Provide a stable runtime interface for workers and agents.
+    - Maintain strict v1_2 compatibility.
+    """
+
+    VERSION = "v1_2"
+    DEFAULT_BACKEND_KEY = "default"
+
+    def __init__(self) -> None:
+        self._backends: Dict[str, Callable[[Dict[str, Any]], Dict[str, Any]]] = {}
+        logger.debug("BackendManagerV1_2 initialized with zero registered backends.")
+
+    # ------------------------------------------------------------------
+    # Backend registration
+    # ------------------------------------------------------------------
+
+    def register_backend(
+        self,
+        key: str,
+        handler: Callable[[Dict[str, Any]], Dict[str, Any]],
+    ) -> None:
+        """Register a backend handler."""
+        if not callable(handler):
+            raise BackendManagerV1_2Error("Backend handler must be callable.")
+
+        self._backends[key] = handler
+        logger.debug(
+            "Backend registered key=%s total_backends=%d",
+            key,
+            len(self._backends),
+        )
+
+    def unregister_backend(self, key: str) -> None:
+        """Remove a backend registration."""
+        if key not in self._backends:
+            raise BackendManagerV1_2Error(f"Unknown backend key '{key}'.")
+
+        del self._backends[key]
+        logger.debug(
+            "Backend unregistered key=%s total_backends=%d",
+            key,
+            len(self._backends),
+        )
+
+    # ------------------------------------------------------------------
+    # Execution
+    # ------------------------------------------------------------------
+
+    def execute(
+        self,
+        task: Dict[str, Any],
+        backend_key: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Execute a task using the selected backend."""
+        key = backend_key or self.DEFAULT_BACKEND_KEY
+        handler = self._backends.get(key)
+
+        if handler is None:
+            raise BackendManagerV1_2Error(f"Unknown backend key '{key}'.")
+
+        try:
+            result = handler(task)
+            if not isinstance(result, dict):
+                raise BackendManagerV1_2Error(f"Backend '{key}' returned a non-dict response.")
+            return result
+        except BackendManagerV1_2Error:
+            raise
+        except Exception as exc:  # pragma: no cover - defensive guard
+            raise BackendManagerV1_2Error(f"Backend '{key}' failed: {exc}") from exc
+
+    # ------------------------------------------------------------------
+    # Runtime compatibility helpers
+    # ------------------------------------------------------------------
+
+    def route(
+        self,
+        *,
+        task_type: Optional[str] = None,
+        payload: Optional[Dict[str, Any]] = None,
+        domain: Optional[str] = None,
+        phase: Optional[str] = None,
+        backend_key: Optional[str] = None,
+        **kwargs: Any,
+    ) -> Dict[str, Any]:
+        """Route a structured task.
+
+        Several v1_2 workers supply either ``task_type`` + ``payload`` or
+        ``domain`` + ``phase`` + ``payload``. We normalize both forms for
+        deterministic runtime compatibility.
+        """
+        normalized_domain = domain or kwargs.get("domain", "generic")
+        normalized_phase = phase or kwargs.get("phase", "default")
+        normalized_payload = payload if payload is not None else kwargs.get("payload", {})
+
+        task = {
+            "task_type": task_type or kwargs.get("task_type", "generic"),
+            "domain": normalized_domain,
+            "phase": normalized_phase,
+            "payload": normalized_payload,
+        }
+        for key, value in kwargs.items():
+            if key not in {"domain", "phase", "payload", "task_type"}:
+                task[key] = value
+
+        return self.execute(task=task, backend_key=backend_key)
+
+    def run_task(
+        self,
+        prompt: str,
+        parameters: Optional[Dict[str, Any]] = None,
+        backend_key: Optional[str] = None,
+        **kwargs: Any,
+    ) -> Dict[str, Any]:
+        """Convenience helper for prompt-driven operations."""
+        task = {
+            "prompt": prompt,
+            "parameters": parameters or {},
+        }
+        task.update(kwargs)
+        return self.execute(task=task, backend_key=backend_key)
+
+
+LLMBackendManagerV1_2 = BackendManagerV1_2
+
+
+__all__ = ["BackendManagerV1_2", "BackendManagerV1_2Error", "LLMBackendManagerV1_2"]
