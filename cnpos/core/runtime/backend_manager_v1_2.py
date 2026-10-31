@@ -1,90 +1,41 @@
-# cnpos/core/runtime/backend_manager_v1_2.py
+# cnpos/core/agents/__init__.py
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Dict, Optional
 
+from cnpos.core.agents.character_arc_worker_v1_2 import CharacterArcWorkerV1_2, CharacterArcWorkerV1_2Error
+from cnpos.core.agents.character_continuity_worker_v1_2 import (
+    CharacterContinuityWorkerV1_2,
+    CharacterContinuityWorkerV1_2Error,
+)
+from cnpos.core.agents.character_profile_worker_v1_2 import (
+    CharacterProfileWorkerV1_2,
+    CharacterProfileWorkerV1_2Error,
+)
+from cnpos.core.agents.code_planner_agent import CodePlannerAgent, CodePlannerAgentV1_2Error
+from cnpos.core.agents.code_reviewer_agent import CodeReviewerAgent, CodeReviewerAgentV1_2Error
+from cnpos.core.agents.code_test_agent import CodeTestAgent, CodeTestAgentV1_2Error
+from cnpos.core.agents.code_writer_agent import CodeWriterAgent, CodeWriterAgentV1_2Error
+from cnpos.core.agents.prompt_agent_v1_2 import PromptAgent, PromptAgentV1_2, PromptAgentV1_2Error
 
 logger = logging.getLogger(__name__)
 
-
-class BackendManagerV1_2Error(Exception):
-    """Raised when BackendManagerV1_2 cannot execute or route a task."""
-
-
-class BackendManagerV1_2:
-    """
-    Deterministic backend manager for CNPOS v1_2.
-
-    Responsibilities:
-    - Register backend handlers.
-    - Route tasks to registered backends.
-    - Provide a stable runtime interface for workers and agents.
-    - Maintain strict v1_2 compatibility.
-    """
-
-    VERSION = "v1_2"
-    DEFAULT_BACKEND_KEY = "default"
-
-    def __init__(self) -> None:
-        self._backends: Dict[str, Callable[[Dict[str, Any]], Dict[str, Any]]] = {}
-        logger.debug("BackendManagerV1_2 initialized with zero registered backends.")
-
-    def register_backend(self, key: str, handler: Callable[[Dict[str, Any]], Dict[str, Any]]) -> None:
-        if not callable(handler):
-            raise BackendManagerV1_2Error("Backend handler must be callable.")
-        self._backends[key] = handler
-        logger.debug("Backend registered key=%s total_backends=%d", key, len(self._backends))
-
-    def unregister_backend(self, key: str) -> None:
-        if key not in self._backends:
-            raise BackendManagerV1_2Error(f"Unknown backend key '{key}'.")
-        del self._backends[key]
-        logger.debug("Backend unregistered key=%s total_backends=%d", key, len(self._backends))
-
-    def execute(self, task: Dict[str, Any], backend_key: Optional[str] = None) -> Dict[str, Any]:
-        key = backend_key or self.DEFAULT_BACKEND_KEY
-        handler = self._backends.get(key)
-
-        if handler is None:
-            raise BackendManagerV1_2Error(f"Unknown backend key '{key}'.")
-
-        try:
-            result = handler(task)
-            if not isinstance(result, dict):
-                raise BackendManagerV1_2Error(f"Backend '{key}' returned a non-dict response.")
-            return result
-        except BackendManagerV1_2Error:
-            raise
-        except Exception as exc:
-            raise BackendManagerV1_2Error(f"Backend '{key}' failed: {exc}") from exc
-
-    def route(
-        self,
-        *,
-        domain: str,
-        phase: str,
-        payload: Dict[str, Any],
-        backend_key: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        task = {"domain": domain, "phase": phase, "payload": payload}
-        return self.execute(task=task, backend_key=backend_key)
-
-    def run_task(
-        self,
-        prompt: str,
-        parameters: Optional[Dict[str, Any]] = None,
-        backend_key: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        task = {"prompt": prompt, "parameters": parameters or {}}
-        return self.execute(task=task, backend_key=backend_key)
-
-
-# Compatibility alias required by historical imports.
-LLMBackendManagerV1_2 = BackendManagerV1_2
-
 __all__ = [
-    "BackendManagerV1_2",
-    "BackendManagerV1_2Error",
-    "LLMBackendManagerV1_2",
+    "CharacterArcWorkerV1_2",
+    "CharacterArcWorkerV1_2Error",
+    "CharacterContinuityWorkerV1_2",
+    "CharacterContinuityWorkerV1_2Error",
+    "CharacterProfileWorkerV1_2",
+    "CharacterProfileWorkerV1_2Error",
+    "CodePlannerAgent",
+    "CodePlannerAgentV1_2Error",
+    "CodeReviewerAgent",
+    "CodeReviewerAgentV1_2Error",
+    "CodeTestAgent",
+    "CodeTestAgentV1_2Error",
+    "CodeWriterAgent",
+    "CodeWriterAgentV1_2Error",
+    "PromptAgent",
+    "PromptAgentV1_2",
+    "PromptAgentV1_2Error",
 ]
