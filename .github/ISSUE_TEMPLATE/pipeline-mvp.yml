@@ -1,0 +1,89 @@
+name: Pipeline MVP — Episode to Render-Job Package
+description: Compile one episode through the v1_2 cinematic contracts into a validated render-job package.
+title: "[Task] Pipeline MVP: Single Episode End-to-End Compilation & Continuity Validation"
+labels:
+  - "type: task"
+  - "area: pipeline"
+  - "area: contracts"
+  - "area: continuity"
+  - "priority: high"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Implement and demonstrate one deterministic local flow that accepts one episode request, processes it through the approved Episode → Scene → Shot → Render pipeline, validates continuity and package references, and writes a validated render-job package directory.
+
+        **MVP output is a package specification, not rendered video or audio.** Use the checked-in v1_2 contracts. Do not introduce a new Prompt Contract or change existing contracts without prior approval from Pip563.
+
+  - type: textarea
+    id: request
+    attributes:
+      label: Episode request and expected behavior
+      description: Describe the sample episode input and behavior the pipeline should produce.
+      placeholder: Include a concise sample prompt or outline and any deterministic expectations.
+    validations:
+      required: true
+
+  - type: textarea
+    id: package_contents
+    attributes:
+      label: Expected package contents
+      description: Specify any package details beyond the minimum MVP contents listed below.
+      value: |
+        - Render-job manifest conforming to `cnpos/core/contracts/render_contract_v1_2.json`.
+        - Episode, scene, and shot artifacts needed to understand the job.
+        - Prompt and supporting artifacts as separate files referenced by stable IDs.
+        - Continuity and validation report.
+      render: markdown
+    validations:
+      required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        ## Scope and acceptance criteria
+
+        - [ ] Verify and use the approved `CinematicPipelineV1_2` API and checked-in Episode, Scene, Shot, and Render contracts.
+        - [ ] Use a deterministic local fake backend; no external generation service is required.
+        - [ ] Validate episode, scene, shot, and render-job data against their corresponding checked-in v1_2 contracts.
+        - [ ] Check episode → scene → shot references, ordering and identifiers, required package/asset references, and continuity rules defined for the sample input.
+        - [ ] Missing or broken references and a deliberately introduced continuity mismatch are reported and prevent package acceptance.
+        - [ ] A documented command creates the package directory; repeated runs produce equivalent package contents, excluding explicitly nondeterministic metadata.
+        - [ ] A pipeline-stage or validation failure is surfaced clearly and does not produce an accepted package.
+        - [ ] Relevant tests pass, with exact commands and results recorded. Claim CI coverage only if a CI workflow is configured and verified.
+        - [ ] Do not change contracts, architecture, canonical paths, or ownership without Pip563's prior approval.
+
+        ## Out of scope
+
+        - Actual video/audio rendering, model inference, or FFmpeg assembly.
+        - External backend integration or `.cnpos` archive format.
+        - A new Prompt Contract or changes to existing v1_2 contracts.
+        - Multi-agent orchestration as a requirement.
+        - Repository-wide renaming, test relocation, or unrelated cleanup.
+
+  - type: textarea
+    id: governance
+    attributes:
+      label: Governance, risks, and blockers
+      description: Record approval status and any contract/API/test mismatches discovered before implementation.
+      value: |
+        This execution-path change is HIGH_RISK. Obtain the approval required by `GOVERNANCE.md` before implementation.
+
+        First verify the current pipeline API and tests. Align stale tests with the approved API; do not change architecture merely to satisfy outdated tests.
+
+        The documented target test domain is top-level `tests/`, while existing tests are under `cnpos/tests/`. Treat this as a baseline discrepancy; do not relocate tests within this task without separate approval.
+      render: markdown
+    validations:
+      required: true
+
+  - type: textarea
+    id: validation
+    attributes:
+      label: Validation evidence
+      description: Fill in after implementation. Record exact commands, results, and unavailable checks.
+      placeholder: |
+        Commands run:
+        Results:
+        Unavailable checks or remaining limitations:
+    validations:
+      required: false
