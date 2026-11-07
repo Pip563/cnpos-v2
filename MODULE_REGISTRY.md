@@ -1,24 +1,16 @@
 # Module Registry
 
-## 1. Purpose
+## Purpose and authority
 
-This document is the authoritative module registry for CNPOS v2. It records the canonical production modules that are recognized as part of the approved architecture, along with their owning subsystem and public identity.
+This registry records currently declared canonical module identities and approved subsystem ownership domains for CNPOS. It supports explicit ownership and drift detection; it does not independently create or approve architecture.
 
-This registry is subordinate to the project’s governance and architecture authority documents. A module is considered valid only when it is:
+[`GOVERNANCE.md`](GOVERNANCE.md) is the authoritative policy. Pip563 is the sole Project Owner and Architecture Authority. The approved architecture and decisions made by Pip563 define canonical structure and ownership. A registry entry, directory, test, or implementation cannot silently amend them.
 
-- in the approved canonical structure,
-- explicitly owned,
-- consistently named,
-- registered here or by the canonical authority documents,
-- and free from unresolved drift.
+A subsystem owner label such as `Runtime` or `Contracts` identifies an ownership domain, not a named individual. Each production module must have an accountable owner recorded in an approved ownership record. If one is absent or disputed, flag it for Pip563; do not infer an individual from authorship or path.
 
----
+## Approved target structure
 
-## 2. Authority and Scope
-
-### 2.1 Production scope
-
-The production architecture is defined as:
+The approved production domain is under `cnpos/core/`; the separate test ownership domain is top-level `tests/`:
 
 ```text
 cnpos/core/
@@ -29,219 +21,83 @@ cnpos/core/
 ├── orchestrators/
 ├── runtime/
 ├── state/
-├── validators/
-└── ...
-```
+└── validators/
 
-The testing subsystem remains a separate ownership domain:
-
-```text
 tests/
 ```
 
-### 2.2 Registry rules
+This is the approved target structure, not a claim that the current checkout conforms. The current repository includes `cnpos/tests/` and modules with noncanonical names, among other items that may require review. Record these as drift and resolve them under governance; do not move, rename, delete, or bless them without required approval.
 
-The following rules apply:
+## Declared leaf module identities
 
-- one module = one owner
-- one module = one canonical path
-- one module = one public identity
-- no duplicate implementations
-- no historical aliases or compatibility wrappers as authoritative modules
-- architecture and governance supersede local convenience or implementation drift
+The following are the explicit leaf module identities in the registry baseline. Their listing does not establish that the module has been tested, is complete, or is actively used. Status records the registry declaration only.
 
----
+| Module ID | Canonical path | Public identity | Ownership domain | Registry status |
+|---|---|---|---|---|
+| `cnpos.core.runtime.backend_manager_v1_2` | `cnpos/core/runtime/backend_manager_v1_2.py` | `BackendManagerV1_2` | Runtime | Declared |
+| `cnpos.core.runtime.continuity_engine_v1_2` | `cnpos/core/runtime/continuity_engine_v1_2.py` | `ContinuityEngineV1_2` | Runtime | Declared |
+| `cnpos.core.automation.code_pipeline_v1_2` | `cnpos/core/automation/code_pipeline_v1_2.py` | `CodeAutomationPipelineV1_2` | Automation | Declared |
 
-## 3. Canonical Module Registry
+These entries are the current explicit leaf-module baseline, not a complete list of every source file present in the repository. Additional production modules require an approved canonical identity and explicit owner before they are treated as registered modules.
 
-| Module ID | Canonical path | Public identity | Subsystem owner | Status | Notes |
-|---|---|---|---|---|---|
-| `cnpos.core.runtime.backend_manager_v1_2` | `cnpos/core/runtime/backend_manager_v1_2.py` | `BackendManagerV1_2` | Runtime | Active | Canonical runtime manager module |
-| `cnpos.core.runtime.continuity_engine_v1_2` | `cnpos/core/runtime/continuity_engine_v1_2.py` | `ContinuityEngineV1_2` | Runtime | Active | Canonical continuity execution engine |
-| `cnpos.core.automation.code_pipeline_v1_2` | `cnpos/core/automation/code_pipeline_v1_2.py` | `CodeAutomationPipelineV1_2` | Automation | Active | Canonical automation pipeline module |
-| `cnpos.core.agents` | `cnpos/core/agents/` | Agent subsystem | Agents | Canonical boundary | Subsystem container; individual modules must be declared explicitly |
-| `cnpos.core.contracts` | `cnpos/core/contracts/` | Contracts subsystem | Contracts | Canonical boundary | Contract domain and schemas are governed here |
-| `cnpos.core.governance` | `cnpos/core/governance/` | Governance subsystem | Governance | Canonical boundary | Policy enforcement and governance logic |
-| `cnpos.core.orchestrators` | `cnpos/core/orchestrators/` | Orchestrators subsystem | Orchestrators | Canonical boundary | Execution orchestration and coordination |
-| `cnpos.core.state` | `cnpos/core/state/` | State subsystem | State | Canonical boundary | Continuity and mutation state management |
-| `cnpos.core.validators` | `cnpos/core/validators/` | Validators subsystem | Validators | Canonical boundary | Validation, continuity, mutation, and governance checks |
+## Subsystem ownership domains
 
----
+The following approved boundaries describe subsystem responsibilities. They do not designate named individuals.
 
-## 4. Subsystem Register
+| Domain | Responsibility |
+|---|---|
+| Agents | Specialized workers and narrative-processing roles |
+| Automation | Bounded planning, scaffolding, code generation, review support, and validation support |
+| Contracts | Canonical schemas, interfaces, and compatibility discipline |
+| Governance | Policy rules and governance enforcement mechanisms, subject to project authority in `GOVERNANCE.md` |
+| Orchestrators | Pipeline coordination, sequencing, and flow control |
+| Runtime | Execution behavior and backend/runtime coordination |
+| State | Continuity, mutation, and state integrity |
+| Validators | Contract, governance, continuity, and mutation enforcement |
+| Tests | Verification evidence in the separate top-level test domain |
 
-The following subsystem domains are recognized as canonical ownership domains and should be treated as authoritative design boundaries:
+## Identity and naming rules
 
-### 4.1 Agents
+Approved v1_2 production modules follow these canonical rules unless Pip563 records an explicit exception or architecture decision:
 
-Owner: Agents
+- file names use `*_v1_2.py`;
+- public classes use `<ClassName>V1_2`;
+- canonical imports begin with `from cnpos.core.`;
+- canonical production modules use absolute canonical imports, not relative or legacy imports;
+- one responsibility has one canonical module, path, owner, public identity, and import.
 
-Responsibilities:
+A rule is a target requirement; this registry does not claim that an automated check currently enforces it. Existing deviations are drift pending review, not automatic permission for mass renaming or deletion.
 
-- specialized workers
-- narrative-processing roles
-- continuity and character-specific support
-- automation-assisted operational agents
+## Registration and status
 
-### 4.2 Automation
+A module becomes registered only after its canonical path, public identity, and accountable owner are approved and recorded. A proposed or unregistered module must not be presented as canonical merely because it exists or is imported by code.
 
-Owner: Automation
-
-Responsibilities:
-
-- planning
-- code generation
-- review support
-- validation support
-- rewrite coordination
-- governance-aware scaffolding
-
-### 4.3 Contracts
-
-Owner: Contracts
-
-Responsibilities:
-
-- canonical interface definitions
-- schema validation contracts
-- public API stability and contract discipline
-
-### 4.4 Governance
-
-Owner: Governance
-
-Responsibilities:
-
-- policy enforcement
-- approval logic
-- architecture rules
-- mutation classification support
-- governance validation
-
-### 4.5 Orchestrators
-
-Owner: Orchestrators
-
-Responsibilities:
-
-- pipeline coordination
-- runtime sequencing
-- worker coordination
-- telemetry and operational flow control
-
-### 4.6 Runtime
-
-Owner: Runtime
-
-Responsibilities:
-
-- execution behavior
-- system orchestration semantics
-- manager and engine behavior
-- operational behavior under approved policy
-
-### 4.7 State
-
-Owner: State
-
-Responsibilities:
-
-- continuity tracking
-- mutation state management
-- persistence of stateful lifecycle information
-- continuity and mutation classification support
-
-### 4.8 Validators
-
-Owner: Validators
-
-Responsibilities:
-
-- enforcement logic
-- governance validation
-- continuity validation
-- mutation validation
-- contract-validation pipeline execution
-
----
-
-## 5. Required Naming and Identity Rules
-
-All registered modules must satisfy the following rules:
-
-- filename pattern: `*_v1_2.py`
-- class pattern: `<ClassName>V1_2`
-- canonical import prefix: `from cnpos.core.`
-- relative imports are prohibited in canonical production modules
-- legacy, historical, and alias modules are not authoritative by default
-
-Registered module identities are thus expected to reflect the canonical naming pattern and the architecture’s single-source-of-truth model.
-
----
-
-## 6. Registry Completeness Requirement
-
-A module is not fully complete unless it is both:
-
-- present in the canonical architecture and
-- represented in this registry or an equivalent approved authority registry.
-
-Unregistered code that exists in the repository but is not in the approved architecture or registry should be treated as drift until remediated.
-
----
-
-## 7. Drift Policy for Registry Entries
-
-Drift is any mismatch between the codebase and the project’s approved structure, ownership, or naming standards.
-
-Examples include:
-
-- path drift
-- ownership drift
-- naming drift
-- contract drift
-- governance drift
-- validation drift
-
-When drift is detected:
-
-1. identify the affected module
-2. assign ownership
-3. record the violation
-4. remediate the module or mark it as non-compliant
-5. revalidate before re-accepting it into normal operation
-
----
-
-## 8. Registry Status Definitions
+Use these registry statuses:
 
 | Status | Meaning |
 |---|---|
-| Active | Canonical production module in normal use |
-| Canonical boundary | Approved subsystem container, not necessarily a leaf module |
-| Draft | Not yet approved for full canonical use |
-| Deprecated | Retained only for historical reference and should not be used in new work |
-| Non-compliant | Present but violates canonical structure or ownership rules |
+| Declared | Explicitly listed in the current registry baseline; completeness and runtime use are not implied |
+| Proposed | Submitted for review; not an approved canonical module |
+| Non-compliant | Present but known to conflict with an approved requirement or missing required ownership/identity |
+| Deprecated | Retained for reference but not approved for new use, with migration or removal decision recorded |
 
----
+Do not mark an entry `Active` or complete without evidence of approved status and intended use.
 
-## 9. Current Registered Canonical Modules
+## Drift handling
 
-The currently recognized canonical modules based on the available authority materials are:
+When registry and repository disagree:
 
-```text
-cnpos.core.runtime.backend_manager_v1_2
-cnpos.core.runtime.continuity_engine_v1_2
-cnpos.core.automation.code_pipeline_v1_2
-```
+1. identify the file/module and the precise mismatch;
+2. determine whether the registry, implementation, or approved architecture is stale;
+3. assign an accountable owner or ask Pip563 to resolve missing ownership;
+4. classify the remediation and obtain any required approval before changing policy, architecture, paths, contracts, or ownership;
+5. implement the approved remediation and record validation evidence;
+6. update this registry only to reflect an approved decision.
 
-These are the explicit module identities presently declared in the authoritative registry materials and should be treated as the minimum canonical registry baseline.
+Tests and runtime results are evidence, not authority to change canonical identities. Do not create aliases or compatibility wrappers to hide drift unless Pip563 explicitly approves an exception or migration design.
 
----
+## Completion standard
 
-## 10. Final Rule
+A module is complete only when its approved canonical path, owner, public identity, contract, implementation, validation, relevant tests, documentation, review, and registry entry are consistent, and no blocking drift remains. Presence in this registry alone is not evidence of completion or production readiness.
 
-The module registry is not a convenience list. It is a governance and architecture artifact that preserves ownership, naming integrity, and canonical placement.
-
-If a module is not registered, not owned, or not aligned with the canonical structure, it is not authoritative unless an explicit governance or architecture decision states otherwise.
-
+For the cinematic MVP, the registered/render contract boundary targets a validated render-job package. It does not imply actual video/audio rendering.
