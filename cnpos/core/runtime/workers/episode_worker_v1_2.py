@@ -1,95 +1,49 @@
-# cnpos/core/runtime/backend_manager_v1_2.py
 from __future__ import annotations
 
+import json
 import logging
-from typing import Any, Callable, Dict, Optional
+import os
+from typing import Any, Dict, Optional
+
+from jsonschema import Draft202012Validator
+
+from cnpos.core.runtime.backend_manager_v1_2 import BackendManagerV1_2, BackendManagerV1_2Error
+from cnpos.core.validators.validator_pipeline_v1_2 import ValidatorPipelineV1_2
 
 logger = logging.getLogger(__name__)
 
 
-class BackendManagerV1_2Error(Exception):
-    """Raised when BackendManagerV1_2 cannot execute or route a task."""
+class EpisodeWorkerV1_2Error(Exception):
+    """Raised when episode validation or deterministic execution fails."""
 
 
-class BackendManagerV1_2:
-    """Deterministic backend manager for CNPOS v1_2."""
-
+class EpisodeWorkerV1_2:
+    DOMAIN = "episode"
     VERSION = "v1_2"
-    DEFAULT_BACKEND_KEY = "default"
 
-    def __init__(self) -> None:
-        self._backends: Dict[str, Callable[[Dict[str, Any]], Dict[str, Any]]] = {}
-        logger.debug("BackendManagerV1_2 initialized with zero registered backends.")
+    def __init__(self, validator_pipeline: Optional[ValidatorPipelineV1_2] = None,
+                 backend_manager: Optional[BackendManagerV1_2] = None,
+                 contract_path: Optional[str] = None) -> None:
+        self._validator_pipeline = validator_pipeline or ValidatorPipelineV1_2()
+        self._backend_manager = backend_manager or BackendManagerV1_2()
+        self._contract_path = contract_path or os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "contracts", "episode_contract_v1_2.json")
+        with open(self._contract_path, encoding="utf-8") as handle:
+            self._schema = json.load(handle)
+        Draft202012Validator.check_schema(self._schema)
 
-    def register_backend(
-        self,
-        key: str,
-        handler: Callable[[Dict[str, Any]], Dict[str, Any]],
-    ) -> None:
-        if not callable(handler):
-            raise BackendManagerV1_2Error("Backend handler must be callable.")
-        self._backends[key] = handler
-        logger.debug("Backend registered key=%s total_backends=%d", key, len(self._backends))
-
-    def unregister_backend(self, key: str) -> None:
-        if key not in self._backends:
-            raise BackendManagerV1_2Error(f"Unknown backend key '{key}'.")
-        del self._backends[key]
-        logger.debug("Backend unregistered key=%s total_backends=%d", key, len(self._backends))
-
-    def execute(self, task: Dict[str, Any], backend_key: Optional[str] = None) -> Dict[str, Any]:
-        key = backend_key or self.DEFAULT_BACKEND_KEY
-        handler = self._backends.get(key)
-
-        if handler is None:
-            raise BackendManagerV1_2Error(f"Unknown backend key '{key}'.")
-
+    def run(self, episode_payload: Dict[str, Any], context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        context = context or {}
         try:
-            result = handler(task)
-            if not isinstance(result, dict):
-                raise BackendManagerV1_2Error(f"Backend '{key}' returned a non-dict response.")
-            return result
-        except BackendManagerV1_2Error:
-            raise
+            Draft202012Validator(self._schema).validate(episode_payload)
+            validated = self._validator_pipeline.validate(domain=self.DOMAIN, payload=episode_payload, contract_schema=self._schema, context=context)
+            result = self._backend_manager.run_task(
+                prompt=f"episode:{episode_payload['episode_id']}:{episode_payload['logline']}",
+                parameters={"stage": self.DOMAIN, "episode_id": episode_payload["episode_id"]},
+                backend_key=context.get("backend_key"),
+            )
+            return {"domain": self.DOMAIN, "version": self.VERSION, "validated_payload": validated, "backend_result": result, "context": context}
         except Exception as exc:
-            raise BackendManagerV1_2Error(f"Backend '{key}' failed: {exc}") from exc
-
-    def route(
-        self,
-        *,
-        domain: str,
-        phase: str,
-        payload: Dict[str, Any],
-        backend_key: Optional[str] = None,
-        task_type: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        task = {
-            "domain": domain,
-            "phase": phase,
-            "task_type": task_type,
-            "payload": payload,
-        }
-        return self.execute(task=task, backend_key=backend_key)
-
-    def run_task(
-        self,
-        prompt: str,
-        parameters: Optional[Dict[str, Any]] = None,
-        backend_key: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        task = {
-            "prompt": prompt,
-            "parameters": parameters or {},
-            "domain": "runtime",
-            "phase": "TASK",
-        }
-        return self.execute(task=task, backend_key=backend_key)
+            raise EpisodeWorkerV1_2Error(str(exc)) from exc
 
 
-# Temporary migration alias; not the canonical runtime dependency path.
-LLMBackendManagerV1_2 = BackendManagerV1_2
-
-__all__ = [
-    "BackendManagerV1_2",
-    "BackendManagerV1_2Error",
-]
+__all__ = ["EpisodeWorkerV1_2", "EpisodeWorkerV1_2Error"]

@@ -1,180 +1,53 @@
-# cnpos/core/runtime/workers/scene_worker_v1_2.py
 from __future__ import annotations
 
 import json
-import logging
 import os
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
-from cnpos.core.governance.governance_loader_v1_2 import GovernanceLoaderV1_2
-from cnpos.core.runtime.backend_manager_v1_2 import (
-    BackendManagerV1_2,
-    BackendManagerV1_2Error,
-)
-from cnpos.core.validators.validator_pipeline_v1_2 import (
-    ValidatorPipelineV1_2,
-    ValidatorPipelineV1_2Error,
-)
+from jsonschema import Draft202012Validator
 
-logger = logging.getLogger(__name__)
+from cnpos.core.runtime.backend_manager_v1_2 import BackendManagerV1_2
+from cnpos.core.validators.validator_pipeline_v1_2 import ValidatorPipelineV1_2
 
 
-class SceneWorkerV1_2Error(Exception):
-    """Raised when SceneWorkerV1_2 encounters an unrecoverable error."""
+class ShotWorkerV1_2Error(Exception):
+    """Raised when shot generation or validation fails."""
 
 
-class SceneWorkerV1_2:
-    """Deterministic scene-level worker for CNPOS v1_2."""
-
-    DOMAIN = "scene"
+class ShotWorkerV1_2:
+    DOMAIN = "shot"
     VERSION = "v1_2"
 
-    def __init__(
-        self,
-        validator_pipeline: Optional[ValidatorPipelineV1_2] = None,
-        governance_loader: Optional[GovernanceLoaderV1_2] = None,
-        backend_manager: Optional[BackendManagerV1_2] = None,
-        contract_path: Optional[str] = None,
-    ) -> None:
+    def __init__(self, validator_pipeline: Optional[ValidatorPipelineV1_2] = None,
+                 backend_manager: Optional[BackendManagerV1_2] = None,
+                 contract_path: Optional[str] = None) -> None:
         self._validator_pipeline = validator_pipeline or ValidatorPipelineV1_2()
-        self._governance_loader = governance_loader or GovernanceLoaderV1_2()
         self._backend_manager = backend_manager or BackendManagerV1_2()
+        path = contract_path or os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "contracts", "shot_contract_v1_2.json")
+        with open(path, encoding="utf-8") as handle:
+            self._schema = json.load(handle)
+        Draft202012Validator.check_schema(self._schema)
 
-        if contract_path is None:
-            base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-            self._contract_path = os.path.join(
-                base_dir,
-                "contracts",
-                "scene_contract_v1_2.json",
-            )
-        else:
-            self._contract_path = contract_path
-
-        self._contract_schema = self._load_contract_schema(self._contract_path)
-        logger.debug(
-            "SceneWorkerV1_2 initialized with contract_path=%s",
-            self._contract_path,
-        )
-
-    def run(
-        self,
-        payload: Dict[str, Any],
-        context: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
-        """Execute a scene task."""
+    def run(self, scenes_payload: List[Dict[str, Any]], context: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         context = context or {}
-        logger.info(
-            "SceneWorkerV1_2.run invoked for scene_id=%s",
-            payload.get("scene_id"),
-        )
-
-        try:
-            validated_payload = self._validate_payload(payload)
-            backend_result = self._execute_backend(validated_payload, context)
-
-            result = {
-                "domain": self.DOMAIN,
-                "version": self.VERSION,
-                "validated_payload": validated_payload,
-                "backend_result": backend_result,
-                "context": context,
-            }
-
-            logger.info(
-                "SceneWorkerV1_2.run completed for scene_id=%s",
-                payload.get("scene_id"),
-            )
-            return result
-
-        except (
-            ValidatorPipelineV1_2Error,
-            BackendManagerV1_2Error,
-            SceneWorkerV1_2Error,
-        ) as exc:
-            logger.error(
-                "SceneWorkerV1_2 controlled failure: %s",
-                exc,
-                exc_info=True,
-            )
-            raise SceneWorkerV1_2Error(str(exc)) from exc
-        except Exception as exc:
-            logger.error(
-                "SceneWorkerV1_2 unexpected failure: %s",
-                exc,
-                exc_info=True,
-            )
-            raise SceneWorkerV1_2Error(
-                f"Unexpected error in SceneWorkerV1_2.run: {exc}"
-            ) from exc
-
-    def _load_contract_schema(self, path: str) -> Dict[str, Any]:
-        """Load scene contract schema from JSON file."""
-        try:
-            with open(path, "r", encoding="utf-8") as f:
-                schema = json.load(f)
-            logger.debug(
-                "SceneWorkerV1_2._load_contract_schema loaded schema from %s",
-                path,
-            )
-            return schema
-        except Exception as exc:
-            logger.error(
-                "SceneWorkerV1_2._load_contract_schema error reading %s: %s",
-                path,
-                exc,
-                exc_info=True,
-            )
-            raise SceneWorkerV1_2Error(
-                f"Failed to load scene contract schema from '{path}': {exc}"
-            ) from exc
-
-    def _validate_payload(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """Validate scene payload against contract and governance rules."""
-        logger.debug(
-            "SceneWorkerV1_2._validate_payload payload_keys=%s",
-            list(payload.keys()),
-        )
-        validated = self._validator_pipeline.validate(
-            domain=self.DOMAIN,
-            payload=payload,
-            contract_schema=self._contract_schema,
-            governance_loader=self._governance_loader,
-        )
-        logger.debug(
-            "SceneWorkerV1_2._validate_payload completed; validated_keys=%s",
-            list(validated.keys()),
-        )
-        return validated
-
-    def _execute_backend(
-        self,
-        payload: Dict[str, Any],
-        context: Dict[str, Any],
-    ) -> Dict[str, Any]:
-        """Execute scene generation via BackendManagerV1_2."""
-        prompt = str(payload.get("prompt", "")).strip()
-        parameters = payload.get("parameters") or {}
-
-        if not prompt:
-            logger.error("SceneWorkerV1_2._execute_backend missing 'prompt' in payload")
-            raise SceneWorkerV1_2Error("Scene payload must contain a non-empty 'prompt'")
-
-        logger.debug(
-            "SceneWorkerV1_2._execute_backend prompt_len=%d parameters_keys=%s",
-            len(prompt),
-            list(parameters.keys()),
-        )
-
-        result = self._backend_manager.run_task(
-            prompt=prompt,
-            parameters=parameters,
-            backend_key=context.get("backend_key"),
-        )
-        logger.debug(
-            "SceneWorkerV1_2._execute_backend backend_result_keys=%s",
-            list(result.keys()),
-        )
+        result = []
+        for scene_result in scenes_payload:
+            scene = scene_result["validated_payload"]
+            descriptors = scene.get("shots") or [{"shot_id": f"{scene['scene_id']}-shot-001", "index": 0, "type": "MS", "description": scene.get("summary", scene["slugline"])}]
+            for descriptor in descriptors:
+                shot = {
+                    "domain": "SHOT", "version": "v1_2",
+                    "shot_id": descriptor["shot_id"], "scene_id": scene["scene_id"],
+                    "episode_id": scene["episode_id"], "index": descriptor["index"],
+                    "type": descriptor.get("type", "MS"), "duration_seconds": descriptor.get("duration_seconds", 5),
+                    "actions": descriptor.get("actions", [{"action_id": f"{descriptor['shot_id']}-action-001", "description": descriptor.get("description", "Establish the scene.")}]),
+                }
+                Draft202012Validator(self._schema).validate(shot)
+                validated = self._validator_pipeline.validate(domain=self.DOMAIN, payload=shot, contract_schema=self._schema, context=context)
+                prompt = descriptor.get("prompt", f"Shot: {descriptor.get('description', shot['type'])}")
+                backend = self._backend_manager.run_task(prompt=prompt, parameters={"stage": self.DOMAIN, "shot_id": shot["shot_id"]}, backend_key=context.get("backend_key"))
+                result.append({"domain": self.DOMAIN, "version": self.VERSION, "validated_payload": validated, "backend_result": backend, "prompt": prompt})
         return result
 
 
-__all__ = ["SceneWorkerV1_2", "SceneWorkerV1_2Error"]
+__all__ = ["ShotWorkerV1_2", "ShotWorkerV1_2Error"]
