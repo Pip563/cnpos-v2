@@ -1,34 +1,24 @@
-# cnpos/core/validators/__init__.py
+"""Character and automation agents, exposed lazily to avoid import cycles."""
 from __future__ import annotations
 
-import logging
+from importlib import import_module
 
-from cnpos.core.validators.continuity_validator_v1_2 import (
-    ContinuityValidatorV1_2,
-    ContinuityValidatorV1_2Error,
-)
-from cnpos.core.validators.governance_validator_v1_2 import (
-    GovernanceValidatorV1_2,
-    GovernanceValidatorV1_2Error,
-)
-from cnpos.core.validators.mutation_validator_v1_2 import (
-    MutationValidatorV1_2,
-    MutationValidatorV1_2Error,
-)
-from cnpos.core.validators.validator_pipeline_v1_2 import (
-    ValidatorPipelineV1_2,
-    ValidatorPipelineV1_2Error,
-)
+_EXPORTS = {
+    "CharacterArcWorkerV1_2": "cnpos.core.agents.character_arc_worker_v1_2",
+    "CharacterArcWorkerV1_2Error": "cnpos.core.agents.character_arc_worker_v1_2",
+    "CharacterContinuityWorkerV1_2": "cnpos.core.agents.character_continuity_worker_v1_2",
+    "CharacterContinuityWorkerV1_2Error": "cnpos.core.agents.character_continuity_worker_v1_2",
+    "CharacterProfileWorkerV1_2": "cnpos.core.agents.character_profile_worker_v1_2",
+    "CharacterProfileWorkerV1_2Error": "cnpos.core.agents.character_profile_worker_v1_2",
+    "PromptAgent": "cnpos.core.agents.prompt_agent_v1_2",
+    "PromptAgentV1_2": "cnpos.core.agents.prompt_agent_v1_2",
+    "PromptAgentV1_2Error": "cnpos.core.agents.prompt_agent_v1_2",
+}
+__all__ = list(_EXPORTS)
 
-logger = logging.getLogger(__name__)
 
-__all__ = [
-    "ContinuityValidatorV1_2",
-    "ContinuityValidatorV1_2Error",
-    "GovernanceValidatorV1_2",
-    "GovernanceValidatorV1_2Error",
-    "MutationValidatorV1_2",
-    "MutationValidatorV1_2Error",
-    "ValidatorPipelineV1_2",
-    "ValidatorPipelineV1_2Error",
-]
+def __getattr__(name: str):
+    module = _EXPORTS.get(name)
+    if module is None:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    return getattr(import_module(module), name)

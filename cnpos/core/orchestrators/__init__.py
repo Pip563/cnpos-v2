@@ -1,20 +1,21 @@
-# cnpos/core/state/__init__.py
+"""Orchestration components, lazily exported to avoid import cycles."""
 from __future__ import annotations
 
-import logging
+from importlib import import_module
 
-from cnpos.core.state.character_mutation_classifier_v1_2 import (
-    CharacterMutationClassifierV1_2,
-    CharacterMutationClassifierV1_2Error,
-)
-from cnpos.core.state.continuity_state_v1_2 import ContinuityStateV1_2
-from cnpos.core.state.mutation_state_manager_v1_2 import MutationStateManagerV1_2
+_EXPORTS = {
+    "CharacterPipelineV1_2": "cnpos.core.orchestrators.character_pipeline_v1_2",
+    "CharacterPipelineV1_2Error": "cnpos.core.orchestrators.character_pipeline_v1_2",
+    "CinematicPipelineV1_2": "cnpos.core.orchestrators.cinematic_pipeline_v1_2",
+    "CinematicPipelineV1_2Error": "cnpos.core.orchestrators.cinematic_pipeline_v1_2",
+    "CNPOSOrchestratorV1_2": "cnpos.core.orchestrators.cnpos_orchestrator_v1_2",
+    "CNPOSOrchestratorV1_2Error": "cnpos.core.orchestrators.cnpos_orchestrator_v1_2",
+}
+__all__ = list(_EXPORTS)
 
-logger = logging.getLogger(__name__)
 
-__all__ = [
-    "ContinuityStateV1_2",
-    "MutationStateManagerV1_2",
-    "CharacterMutationClassifierV1_2",
-    "CharacterMutationClassifierV1_2Error",
-]
+def __getattr__(name: str):
+    module = _EXPORTS.get(name)
+    if module is None:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    return getattr(import_module(module), name)

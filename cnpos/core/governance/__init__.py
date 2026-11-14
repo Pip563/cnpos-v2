@@ -1,35 +1,20 @@
-# cnpos/core/__init__.py
+"""Governance components, lazily exported to avoid import cycles."""
 from __future__ import annotations
 
-import logging
+from importlib import import_module
 
-logger = logging.getLogger(__name__)
-
-__version__ = "v1_2"
-
-__all__ = [
-    "__version__",
-    "BackendManagerV1_2",
-    "CharacterMutationClassifierV1_2",
-    "CharacterPipelineV1_2",
-    "EpisodeWorkerV1_2",
-    "GovernanceLoaderV1_2",
-    "GovernanceValidatorV1_2",
-    "ValidatorPipelineV1_2",
-]
+_EXPORTS = {
+    "GovernanceLoaderV1_2": "cnpos.core.governance.governance_loader_v1_2",
+    "GovernanceLoaderV1_2Error": "cnpos.core.governance.governance_loader_v1_2",
+    "GovernanceValidatorV1_2": "cnpos.core.governance.governance_validator_v1_2",
+    "GovernanceValidatorV1_2Error": "cnpos.core.governance.governance_validator_v1_2",
+    "CodeMutationRulesV1_2": "cnpos.core.governance.code_mutation_rules_v1_2",
+}
+__all__ = list(_EXPORTS)
 
 
 def __getattr__(name: str):
-    lazy_imports = {
-        "BackendManagerV1_2": "cnpos.core.runtime.backend_manager_v1_2",
-        "CharacterMutationClassifierV1_2": "cnpos.core.state.character_mutation_classifier_v1_2",
-        "CharacterPipelineV1_2": "cnpos.core.orchestrators.character_pipeline_v1_2",
-        "EpisodeWorkerV1_2": "cnpos.core.runtime.workers.episode_worker_v1_2",
-        "GovernanceLoaderV1_2": "cnpos.core.governance.governance_loader_v1_2",
-        "GovernanceValidatorV1_2": "cnpos.core.governance.governance_validator_v1_2",
-        "ValidatorPipelineV1_2": "cnpos.core.validators.validator_pipeline_v1_2",
-    }
-    if name not in lazy_imports:
+    module = _EXPORTS.get(name)
+    if module is None:
         raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-    module = __import__(lazy_imports[name], fromlist=[name])
-    return getattr(module, name)
+    return getattr(import_module(module), name)
