@@ -2,7 +2,7 @@
 name = "cnpos"
 version = "1.2.0"
 requires-python = ">=3.10"
-dependencies = []
+dependencies = ["jsonschema"]
 
 [build-system]
 requires = ["setuptools"]
